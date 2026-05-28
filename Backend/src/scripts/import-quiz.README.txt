@@ -1,0 +1,5 @@
+TSV format (tab-separated) per line:
+question<TAB>optionA<TAB>optionB<TAB>optionC<TAB>optionD<TAB>correctIndex<TAB>timeLimit<TAB>points
+
+Example:
+Which planet is known as the Morning Star?	Venus	Mars	Jupiter	Saturn	1	20	100

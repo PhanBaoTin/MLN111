@@ -1,0 +1,9 @@
+export declare class CreateRoomDto {
+    pin: string;
+    quizId: string;
+    hostPlayerId: string;
+    currentQuestionIndex?: number;
+    shuffleQuestions?: boolean;
+    shuffleOptions?: boolean;
+    maxPlayers?: number;
+}

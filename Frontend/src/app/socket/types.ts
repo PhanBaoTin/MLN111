@@ -39,10 +39,12 @@ export interface RoomSnapshot {
   currentQuestionIndex: number;
   questionOrder: number[];
   timerEndsAt: number | null;
-  teamBoards: {
-    red: TeamBoardState;
-    blue: TeamBoardState;
-  };
+  
   startedAt: number | null;
-  winnerId: 'red' | 'blue' | 'tie' | null;
+  
+  // Sửa dòng này thành dòng dưới đây:
+  teamBoards: { [teamName: string]: TeamBoardState }; 
+  
+  // Đồng thời sửa lỗi winnerId (Lỗi số 2 trong log: string is not assignable to "red" | "blue"...)
+  winnerId: string | null; // Cho phép nhận bất kỳ string tên đội nào thắng cuộc, thay vì ép cứng cụm từ cũ
 }

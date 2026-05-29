@@ -94,7 +94,7 @@ export function AdminPage() {
           title,
           questions: formattedQs,
           maxTeams,
-        });
+        } as any);
         setCreateMsg('✓ Quiz updated successfully!');
         setEditingQuizId(null);
         setTitle('');
@@ -108,7 +108,7 @@ export function AdminPage() {
           shuffleQuestions: shuffle,
           maxTeams,
           globalTimeLimit,
-        });
+        } as any);
         const newRoomId = data.room._id;
         const newToken = data.hostToken;
         setRoomId(newRoomId);
@@ -191,8 +191,8 @@ export function AdminPage() {
     setTimeout(() => setActionLoading(null), 1200);
   }
 
-  const redBoard: TeamBoardState = snapshot?.teamBoards?.red ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
-  const blueBoard: TeamBoardState = snapshot?.teamBoards?.blue ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
+  // const redBoard: TeamBoardState = snapshot?.teamBoards?.red ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
+  // const blueBoard: TeamBoardState = snapshot?.teamBoards?.blue ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
 
   return (
     <div className="space-y-8 pb-10 max-w-6xl mx-auto w-full">

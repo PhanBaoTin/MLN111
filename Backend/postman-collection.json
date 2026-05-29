@@ -1,0 +1,366 @@
+{
+  "info": {
+    "_postman_id": "reveal-quiz-race-db",
+    "name": "REVEAL QUIZ RACE - MongoDB API Tests",
+    "description": "Postman collection for testing REVEAL QUIZ RACE API with MongoDB",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "GET - Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                ""
+              ]
+            },
+            "description": "Check if API is running"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Quizzes",
+      "item": [
+        {
+          "name": "GET - Get All Quizzes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/quizzes",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "quizzes"
+              ]
+            },
+            "description": "Retrieve all quizzes from MongoDB"
+          },
+          "response": []
+        },
+        {
+          "name": "POST - Create Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sample Quiz\",\n  \"imageBase64\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\",\n  \"questions\": [\n    {\n      \"displayIndex\": 1,\n      \"text\": \"What is 2 + 2?\",\n      \"timeLimit\": 30,\n      \"points\": 10,\n      \"options\": [\n        {\n          \"id\": \"opt1\",\n          \"text\": \"3\"\n        },\n        {\n          \"id\": \"opt2\",\n          \"text\": \"4\"\n        },\n        {\n          \"id\": \"opt3\",\n          \"text\": \"5\"\n        },\n        {\n          \"id\": \"opt4\",\n          \"text\": \"6\"\n        }\n      ],\n      \"correctOptionId\": \"opt2\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/quizzes",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "quizzes"
+              ]
+            },
+            "description": "Create a new quiz in MongoDB"
+          },
+          "response": []
+        },
+        {
+          "name": "GET - Get Quiz by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/quizzes/{{quiz_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "quizzes",
+                "{{quiz_id}}"
+              ]
+            },
+            "description": "Get a specific quiz by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH - Update Quiz",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Quiz Title\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/quizzes/{{quiz_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "quizzes",
+                "{{quiz_id}}"
+              ]
+            },
+            "description": "Update a quiz in MongoDB"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE - Delete Quiz",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/quizzes/{{quiz_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "quizzes",
+                "{{quiz_id}}"
+              ]
+            },
+            "description": "Delete a quiz from MongoDB"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "GET - Get All Rooms",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/rooms",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms"
+              ]
+            },
+            "description": "Retrieve all rooms from MongoDB"
+          },
+          "response": []
+        },
+        {
+          "name": "POST - Quick Create Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My Quiz Game\",\n  \"imageBase64\": \"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==\",\n  \"questions\": [\n    {\n      \"displayIndex\": 1,\n      \"text\": \"Question 1?\",\n      \"timeLimit\": 30,\n      \"points\": 10,\n      \"options\": [\n        {\"id\": \"a\", \"text\": \"Option A\"},\n        {\"id\": \"b\", \"text\": \"Option B\"},\n        {\"id\": \"c\", \"text\": \"Option C\"},\n        {\"id\": \"d\", \"text\": \"Option D\"}\n      ],\n      \"correctOptionId\": \"a\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/rooms/quick-create",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms",
+                "quick-create"
+              ]
+            },
+            "description": "Create a quiz and room simultaneously (one-shot operation)"
+          },
+          "response": []
+        },
+        {
+          "name": "POST - Create Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quizId\": \"{{quiz_id}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/rooms",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms"
+              ]
+            },
+            "description": "Create a new room for an existing quiz"
+          },
+          "response": []
+        },
+        {
+          "name": "GET - Get Room by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/rooms/{{room_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms",
+                "{{room_id}}"
+              ]
+            },
+            "description": "Get a specific room by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "PATCH - Update Room",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phase\": \"playing\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/rooms/{{room_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms",
+                "{{room_id}}"
+              ]
+            },
+            "description": "Update room status (e.g., change phase)"
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE - Delete Room",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:5000/rooms/{{room_id}}",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms",
+                "{{room_id}}"
+              ]
+            },
+            "description": "Delete a room from MongoDB"
+          },
+          "response": []
+        },
+        {
+          "name": "POST - Launch Existing Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"quizId\": \"{{quiz_id}}\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/rooms/launch-existing",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "5000",
+              "path": [
+                "rooms",
+                "launch-existing"
+              ]
+            },
+            "description": "Launch an existing quiz as a new room"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "quiz_id",
+      "value": "",
+      "type": "string",
+      "description": "Replace with actual quiz ID from MongoDB"
+    },
+    {
+      "key": "room_id",
+      "value": "",
+      "type": "string",
+      "description": "Replace with actual room ID from MongoDB"
+    }
+  ]
+}

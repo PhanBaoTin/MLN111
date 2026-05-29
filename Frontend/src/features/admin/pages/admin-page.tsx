@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../../../app/socket/socket-context';
+import { type TeamBoardState } from '../../../shared/types';
 import { parseDocx, getQuizzes, updateQuiz, deleteQuiz } from '../api/quiz-api';
 import { quickCreateRoom, launchExistingRoom } from '../api/room-api';
 import { blankQuestion, type QuestionDraft, type Tab, uid } from '../types';
@@ -186,8 +187,8 @@ export function AdminPage() {
     setTimeout(() => setActionLoading(null), 1200);
   }
 
-  const redBoard = snapshot?.teamBoards?.red ?? { clearedTiles: [], resets: 0 };
-  const blueBoard = snapshot?.teamBoards?.blue ?? { clearedTiles: [], resets: 0 };
+  const redBoard: TeamBoardState = snapshot?.teamBoards?.red ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
+  const blueBoard: TeamBoardState = snapshot?.teamBoards?.blue ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
 
   return (
     <div className="space-y-8 pb-10 max-w-6xl mx-auto w-full">

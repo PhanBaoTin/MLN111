@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCountdown } from '../../../app/hooks/use-countdown';
 import { useSocket } from '../../../app/socket/socket-context';
+import { type TeamBoardState } from '../../../shared/types';
 import { TILES } from '../types';
 
 export function GamePage() {
@@ -49,8 +50,8 @@ export function GamePage() {
     };
   }, [socket, playerId]);
 
-  const myBoard = snapshot?.teamBoards?.[myTeam] ?? { clearedTiles: [], resets: 0 };
-  const opponentBoard = snapshot?.teamBoards?.[opponentTeam] ?? { clearedTiles: [], resets: 0 };
+  const myBoard: TeamBoardState = snapshot?.teamBoards?.[myTeam] ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
+  const opponentBoard: TeamBoardState = snapshot?.teamBoards?.[opponentTeam] ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
   const myPlayer = leaderboard?.find((p) => p.id === playerId);
   const myScore = myPlayer?.score ?? 0;
   const myStreak = myPlayer?.streak ?? 0;

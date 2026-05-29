@@ -21,6 +21,7 @@ const player_answer_module_1 = require("./modules/player-answer/player-answer.mo
 const quiz_module_1 = require("./modules/quiz/quiz.module");
 const realtime_module_1 = require("./modules/realtime/realtime.module");
 const room_module_1 = require("./modules/room/room.module");
+const database_logger_1 = require("./common/logger/database.logger");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -33,9 +34,43 @@ exports.AppModule = AppModule = __decorate([
             }),
             mongoose_1.MongooseModule.forRootAsync({
                 inject: [config_1.ConfigService],
-                useFactory: (config) => ({
-                    uri: config.get('mongoUri'),
-                }),
+                useFactory: (config) => {
+                    const mongoUri = config.get('mongoUri');
+                    const dbLogger = new database_logger_1.DatabaseLogger();
+                    dbLogger.logConnectionStart(mongoUri);
+                    return {
+                        uri: mongoUri,
+                        retryAttempts: 5,
+                        retryDelay: 5000,
+                        serverSelectionTimeoutMS: 10000,
+                        socketTimeoutMS: 45000,
+                        connectTimeoutMS: 10000,
+                        w: 'majority',
+                        retryWrites: true,
+                        journal: true,
+                        onConnectionCreate: (connection) => {
+                            connection.once('connected', () => {
+                                dbLogger.logConnectionSuccess();
+                                dbLogger.logConnectionOptions({
+                                    retryWrites: true,
+                                    w: 'majority',
+                                    journal: true,
+                                    serverSelectionTimeoutMS: 10000,
+                                    connectTimeoutMS: 10000,
+                                });
+                            });
+                            connection.on('error', (error) => {
+                                dbLogger.logConnectionError(error);
+                            });
+                            connection.on('disconnected', () => {
+                                dbLogger.logger.warn('❌ MongoDB Disconnected');
+                            });
+                            connection.on('reconnected', () => {
+                                dbLogger.logger.log('🔄 MongoDB Reconnected');
+                            });
+                        },
+                    };
+                },
             }),
             quiz_module_1.QuizModule,
             room_module_1.RoomModule,
@@ -44,7 +79,7 @@ exports.AppModule = AppModule = __decorate([
             realtime_module_1.RealtimeModule,
         ],
         controllers: [app_controller_1.AppController],
-        providers: [app_service_1.AppService],
+        providers: [app_service_1.AppService, database_logger_1.DatabaseLogger],
     })
 ], AppModule);
 //# sourceMappingURL=app.module.js.map

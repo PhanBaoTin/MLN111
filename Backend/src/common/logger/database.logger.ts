@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 @Injectable()
 export class DatabaseLogger {
-  private logger = new Logger('🔗 MongoDB Connection');
+  logger = new Logger('🔗 MongoDB Connection');
 
   logConnectionStart(uri: string) {
     const maskedUri = this.maskSensitiveInfo(uri);
@@ -60,6 +60,14 @@ export class DatabaseLogger {
     this.logger.warn(
       `⏱️  Connection Timeout - Check your network or MongoDB URI`,
     );
+  }
+
+  logDisconnected() {
+    this.logger.warn('❌ MongoDB Disconnected');
+  }
+
+  logReconnected() {
+    this.logger.log('🔄 MongoDB Reconnected');
   }
 
   private maskSensitiveInfo(uri: string): string {

@@ -20,7 +20,7 @@ import { DatabaseLogger } from './common/logger/database.logger';
     MongooseModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const mongoUri = config.get<string>('mongoUri');
+        const mongoUri = config.get<string>('mongoUri') || '';
         const dbLogger = new DatabaseLogger();
 
         dbLogger.logConnectionStart(mongoUri);
@@ -52,11 +52,11 @@ import { DatabaseLogger } from './common/logger/database.logger';
             });
 
             connection.on('disconnected', () => {
-              dbLogger.logger.warn('❌ MongoDB Disconnected');
+              dbLogger.logDisconnected();
             });
 
             connection.on('reconnected', () => {
-              dbLogger.logger.log('🔄 MongoDB Reconnected');
+              dbLogger.logReconnected();
             });
           },
         };

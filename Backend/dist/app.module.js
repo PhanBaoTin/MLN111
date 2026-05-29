@@ -21,7 +21,7 @@ const player_answer_module_1 = require("./modules/player-answer/player-answer.mo
 const quiz_module_1 = require("./modules/quiz/quiz.module");
 const realtime_module_1 = require("./modules/realtime/realtime.module");
 const room_module_1 = require("./modules/room/room.module");
-const database_logger_1 = require("./common/logger/database.logger");
+const database_logger_1 = require("./common/logger/database-logger");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;

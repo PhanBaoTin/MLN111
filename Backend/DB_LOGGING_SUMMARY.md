@@ -6,7 +6,7 @@
 
 | File | Mô Tả |
 |------|--------|
-| `src/common/logger/database.logger.ts` | Logger chuyên cho MongoDB connection events |
+| `src/common/logger/database-logger.ts` | Logger chuyên cho MongoDB connection events |
 | `src/common/logger/db.logger.ts` | Helper utilities cho database operations |
 | `src/app.module.ts` | Thêm logging vào MongoDB connection setup |
 | `src/main.ts` | Thêm bootstrap process logging |

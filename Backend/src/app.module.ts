@@ -9,7 +9,7 @@ import { PlayerAnswerModule } from './modules/player-answer/player-answer.module
 import { QuizModule } from './modules/quiz/quiz.module';
 import { RealtimeModule } from './modules/realtime/realtime.module';
 import { RoomModule } from './modules/room/room.module';
-import { DatabaseLogger } from './common/logger/database.logger';
+import { DatabaseLogger } from './common/logger/database-logger';
 
 @Module({
   imports: [

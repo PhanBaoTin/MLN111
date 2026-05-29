@@ -2,9 +2,9 @@
 
 ## ✅ Các File Đã Tạo
 
-### 1. **database.logger.ts** - Logger chuyên cho kết nối MongoDB
+### 1. **database-logger.ts** - Logger chuyên cho kết nối MongoDB
 ```
-src/common/logger/database.logger.ts
+src/common/logger/database-logger.ts
 ```
 
 ### 2. **db.logger.ts** - Helper cho các operation database

@@ -15,6 +15,7 @@ export const router = createBrowserRouter([
       { path: 'waiting', element: <WaitingPage /> },
       { path: 'game', element: <GamePage /> },
       { path: 'admin', element: <AdminPage /> },
+      { path: '*', element: <HomePage /> }
     ],
   },
 ]);

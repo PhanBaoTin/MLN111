@@ -35,7 +35,7 @@ exports.AppModule = AppModule = __decorate([
             mongoose_1.MongooseModule.forRootAsync({
                 inject: [config_1.ConfigService],
                 useFactory: (config) => {
-                    const mongoUri = config.get('mongoUri');
+                    const mongoUri = config.get('mongoUri') || '';
                     const dbLogger = new database_logger_1.DatabaseLogger();
                     dbLogger.logConnectionStart(mongoUri);
                     return {
@@ -63,10 +63,10 @@ exports.AppModule = AppModule = __decorate([
                                 dbLogger.logConnectionError(error);
                             });
                             connection.on('disconnected', () => {
-                                dbLogger.logger.warn('❌ MongoDB Disconnected');
+                                dbLogger.logDisconnected();
                             });
                             connection.on('reconnected', () => {
-                                dbLogger.logger.log('🔄 MongoDB Reconnected');
+                                dbLogger.logReconnected();
                             });
                         },
                     };

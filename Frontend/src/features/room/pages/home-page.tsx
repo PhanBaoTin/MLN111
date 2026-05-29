@@ -46,39 +46,48 @@ export function HomePage() {
       setJoining(false);
     }
   }
-
-  useEffect(() => {
+useEffect(() => {
     if (!socket) return;
 
-    // If no PIN yet, show default two-team options.
-    if (!pin) {
-      const fallback = TEAM_COLORS.slice(0, 2);
-      setTeamOptions(fallback);
-      setSelectedTeam((prev) => prev ?? fallback[0] ?? null);
+    // Hàm mặc định: Luôn hiển thị đầy đủ 8 màu để người chơi không bị mất nút bấm
+    const resetToFullColors = () => {
+      const defaultOpts = TEAM_COLORS.slice(0, 8);
+      setTeamOptions(defaultOpts);
+      setSelectedTeam((prev) => (prev && defaultOpts.includes(prev) ? prev : defaultOpts[0]));
+    };
+
+    // 1. Nếu ô nhập PIN trống hoặc người chơi chưa gõ xong (mã PIN thường từ 4-6 ký tự)
+    if (!pin || pin.trim().length < 4) {
+      resetToFullColors();
       return;
     }
 
-    // Query server for room info (maxTeams) by PIN
+    // 2. Khi đã gõ mã PIN tương đối đầy đủ -> Truy vấn server
     try {
       socket.emit('room:info', { key: pin.trim() }, (ack: any) => {
-        if (ack?.ok && ack.info?.maxTeams) {
-          const max = Math.min(ack.info.maxTeams, TEAM_COLORS.length);
+        console.log('Dữ liệu Backend trả về cho room:info:', ack);
+
+        // Kiểm tra linh hoạt cả ack.info hoặc ack.room từ Backend
+        const roomData = ack?.info || ack?.room || ack?.data;
+        const maxTeams = roomData?.maxTeams;
+
+        if (ack?.ok && maxTeams) {
+          // Nếu tìm thấy phòng và có giới hạn maxTeams hợp lệ từ Admin
+          const max = Math.min(maxTeams, TEAM_COLORS.length);
           const opts = TEAM_COLORS.slice(0, max);
           setTeamOptions(opts);
-          setSelectedTeam((prev) => prev ?? opts[0] ?? null);
+          setSelectedTeam((prev) => (opts.includes(prev ?? '') ? prev : opts[0]));
         } else {
-          const fallback = TEAM_COLORS.slice(0, 2);
-          setTeamOptions(fallback);
-          setSelectedTeam((prev) => prev ?? fallback[0] ?? null);
+          // Nếu Server bảo không tìm thấy phòng (có thể gõ sai PIN) 
+          // -> GIỮ NGUYÊN 8 màu cho người chơi chọn, KHÔNG ép về 2 màu nữa
+          resetToFullColors();
         }
       });
-    } catch {
-      const fallback = TEAM_COLORS.slice(0, 2);
-      setTeamOptions(fallback);
-      setSelectedTeam((prev) => prev ?? fallback[0] ?? null);
+    } catch (err) {
+      console.error('Lỗi Socket emit:', err);
+      resetToFullColors();
     }
   }, [pin, socket]);
-
   return (
     <div className="flex h-[80vh] flex-col items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">

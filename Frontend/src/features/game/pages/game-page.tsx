@@ -167,29 +167,29 @@ export function GamePage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-shrink-0">
         <div>
-          <h1 className="text-3xl font-display capitalize">{myTeam} Team Board</h1>
-          <p className="mt-2 text-sm text-[color:var(--muted)]">
+          <h1 className="text-2xl font-display capitalize">{myTeam} Team Board</h1>
+          <p className="mt-1 text-xs text-[color:var(--muted)]">
             Q{(snapshot?.currentQuestionIndex ?? 0) + 1}
             {currentQuestion ? ` · ${currentQuestion.timeLimit}s limit` : ''}
             {myStreak >= 3 ? <><span className="inline-block animate-wiggle">🔥</span> Streak active</> : ''}
           </p>
         </div>
-        <div className="rounded-2xl border px-5 py-3 text-sm font-semibold tabular-nums transition-colors"
+        <div className="rounded-xl border px-4 py-2 text-xs font-semibold tabular-nums transition-colors"
           style={timerUrgent ? { borderColor: '#ff6a3d', color: '#ff6a3d' } : {}}>
           {phase === 'playing' ? <><span className="inline-block animate-pulse-subtle">⏱</span> {countdown < 10 ? '0' : ''}{countdown}s</> : <><span className="inline-block animate-float">📋</span> {phase}</>}
         </div>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-[1.2fr,0.8fr] flex-1 min-h-0 pb-2">
+      <div className="grid gap-3 lg:grid-cols-[1.2fr,0.8fr] flex-1 min-h-0 pb-1">
         {/* My board */}
         <div className="flex flex-col min-h-0">
-          <div className="flex items-center justify-between mb-2 flex-shrink-0">
-            <span className="text-sm font-semibold text-[color:var(--muted)] uppercase tracking-widest">
+          <div className="flex items-center justify-between mb-1 flex-shrink-0">
+            <span className="text-xs font-semibold text-[color:var(--muted)] uppercase tracking-widest">
               My Board · {myBoard.clearedTiles.length}/{snapshot?.questionOrder?.length || 0} revealed
             </span>
-            {myBoard.resets > 0 && <span className="text-xs text-red-400">Reset ×{myBoard.resets}</span>}
+            {myBoard.resets > 0 && <span className="text-[10px] text-red-400">Reset ×{myBoard.resets}</span>}
           </div>
-          <div className="grid gap-2 flex-1 min-h-0" 
+          <div className="grid gap-1 flex-1 min-h-0" 
             style={{ 
               gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9))}, 1fr)`,
               gridTemplateRows: `repeat(${Math.ceil((snapshot?.questionOrder?.length || 9) / Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9)))}, 1fr)` 
@@ -223,68 +223,68 @@ export function GamePage() {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-4 min-h-0">
-          <div className="flex-1 min-h-0 flex flex-col rounded-3xl border border-white/5 bg-white/5 p-5 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 overflow-y-auto custom-scrollbar">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)] font-bold flex-shrink-0">
+        <div className="flex flex-col gap-2 min-h-0">
+          <div className="flex-1 min-h-0 flex flex-col rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 overflow-hidden">
+            <p className="text-[9px] uppercase tracking-[0.2em] text-[color:var(--muted)] font-bold flex-shrink-0">
               {phase === 'playing' ? 'Current question' : 'Waiting for host…'}
             </p>
             {currentQuestion ? (
               <>
-                <div className="animate-slide-up flex flex-col flex-1 min-h-0 mt-2">
-                  <p className="text-xl font-bold leading-snug text-white drop-shadow-md flex-shrink-0">{currentQuestion.text}</p>
-                  <div className="mt-3 grid gap-2 text-sm overflow-y-auto pr-1 custom-scrollbar">
+                <div className="animate-slide-up flex flex-col flex-1 min-h-0 mt-1">
+                  <p className="text-base font-bold leading-tight text-white drop-shadow-md flex-shrink-0">{currentQuestion.text}</p>
+                  <div className="mt-2 grid gap-1 text-xs overflow-hidden pr-0">
                     {currentQuestion.options.map((opt) => {
                       const isSelected = selectedOption === opt.id;
                       return (
                         <button key={opt.id} id={`option-${opt.id}`}
                           onClick={() => handleAnswer(opt.id)}
                           disabled={!!selectedOption || phase !== 'playing'}
-                          className="group flex items-center justify-between rounded-2xl border px-4 py-3 text-left font-semibold transition-all duration-300 disabled:cursor-not-allowed hover:scale-[1.02] hover:bg-white/5"
+                          className="group flex items-center justify-between rounded-lg border px-3 py-2 text-left font-semibold transition-all duration-300 disabled:cursor-not-allowed hover:scale-[1.02] hover:bg-white/5"
                           style={{ 
                             borderColor: isSelected ? 'var(--accent)' : 'rgba(255,255,255,0.1)', 
                             background: isSelected ? 'rgba(255,140,105,0.15)' : 'rgba(0,0,0,0.2)',
                             boxShadow: isSelected ? '0 0 20px rgba(255,140,105,0.2)' : undefined
                           }}>
-                          <span className="text-gray-200 group-hover:text-white transition-colors">{opt.text}</span>
-                          {isSelected && <span className="animate-bounce-in text-[color:var(--accent)]">●</span>}
+                          <span className="text-gray-200 group-hover:text-white transition-colors truncate">{opt.text}</span>
+                          {isSelected && <span className="animate-bounce-in text-[color:var(--accent)] flex-shrink-0 ml-1">●</span>}
                         </button>
                       );
                     })}
                   </div>
                 </div>
                 {answerResult && (
-                  <div className={`absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 rounded-3xl p-6 text-center text-white shadow-2xl backdrop-blur-md animate-bounce-in ${answerResult.isCorrect ? 'bg-teal-500/90 shadow-teal-500/50' : 'bg-rose-500/90 shadow-rose-500/50'}`}>
-                    <div className="text-5xl mb-2">{answerResult.isCorrect ? '✓' : '✗'}</div>
-                    <div className="text-xl font-bold uppercase tracking-widest">{answerResult.isCorrect ? 'Correct!' : 'Wrong!'}</div>
-                    <div className="text-sm font-semibold opacity-90">{answerResult.isCorrect ? `+${answerResult.earnedScore} Points` : 'Board Reset'}</div>
+                  <div className={`absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-40 rounded-2xl p-4 text-center text-white shadow-2xl backdrop-blur-md animate-bounce-in ${answerResult.isCorrect ? 'bg-teal-500/90 shadow-teal-500/50' : 'bg-rose-500/90 shadow-rose-500/50'}`}>
+                    <div className="text-4xl mb-1">{answerResult.isCorrect ? '✓' : '✗'}</div>
+                    <div className="text-lg font-bold uppercase tracking-widest">{answerResult.isCorrect ? 'Correct!' : 'Wrong!'}</div>
+                    <div className="text-xs font-semibold opacity-90">{answerResult.isCorrect ? `+${answerResult.earnedScore} Points` : 'Board Reset'}</div>
                   </div>
                 )}
               </>
             ) : (
-              <p className="mt-2 text-[color:var(--muted)] text-sm">Waiting for the game to start…</p>
+              <p className="mt-1 text-[color:var(--muted)] text-xs">Waiting for the game to start…</p>
             )}
           </div>
 
-          <div className="flex-shrink-0 rounded-3xl border border-white/5 bg-white/5 p-5 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)] font-bold">My stats</p>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center">
+          <div className="flex-shrink-0 rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10">
+            <p className="text-[9px] uppercase tracking-[0.2em] text-[color:var(--muted)] font-bold">My stats</p>
+            <div className="mt-2 grid grid-cols-3 gap-1 text-center">
               {[{ label: 'Score', value: myScore, icon: '🏆', color: 'var(--accent-2)' }, { label: 'Streak', value: myStreak, icon: '🔥', color: '#ff6a3d' }, { label: 'Resets', value: myResets, icon: '🔄', color: 'var(--muted)' }].map(({ label, value, icon, color }) => (
-                <div key={label} className="rounded-2xl border border-white/5 bg-black/20 p-3 shadow-inner hover:scale-105 transition-transform duration-300">
-                  <div className="text-lg mb-0.5">{icon}</div>
-                  <p className="text-xl font-bold font-mono" style={{ color }}>{value}</p>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-[color:var(--muted)]">{label}</p>
+                <div key={label} className="rounded-lg border border-white/5 bg-black/20 p-2 shadow-inner hover:scale-105 transition-transform duration-300">
+                  <div className="text-base mb-0">{icon}</div>
+                  <p className="text-lg font-bold font-mono" style={{ color }}>{value}</p>
+                  <p className="text-[8px] font-bold uppercase tracking-widest text-[color:var(--muted)]">{label}</p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="flex-shrink-0 rounded-3xl border border-white/5 bg-white/5 p-5 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 flex gap-4 overflow-x-auto custom-scrollbar">
+          <div className="flex-shrink-0 rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 flex gap-2 overflow-x-auto custom-scrollbar">
             {opponentBoards.map(([oppTeam, oppBoard]) => (
-              <div key={oppTeam} className="flex-1 min-w-[120px]">
-                <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)] mb-2 font-bold truncate">
+              <div key={oppTeam} className="flex-1 min-w-[100px]">
+                <p className="text-[9px] uppercase tracking-[0.2em] text-[color:var(--muted)] mb-1 font-bold truncate">
                   {oppTeam} · {oppBoard.clearedTiles.length}/{snapshot?.questionOrder?.length || 0}
                 </p>
-                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9))}, 1fr)` }}>
+                <div className="grid gap-0.5" style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9))}, 1fr)` }}>
                   {Array.from({ length: snapshot?.questionOrder?.length || 9 }, (_, i) => i).map((i) => {
                     const isCleared = oppBoard.clearedTiles.includes(i);
                     return (
@@ -301,7 +301,7 @@ export function GamePage() {
                   })}
                 </div>
                 {oppBoard.resets > 0 && (
-                  <p className="mt-2 text-[10px] text-[color:var(--muted)]">Reset ×{oppBoard.resets}</p>
+                  <p className="mt-1 text-[8px] text-[color:var(--muted)]">Reset ×{oppBoard.resets}</p>
                 )}
               </div>
             ))}

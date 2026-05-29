@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSocket } from '../../../app/socket/socket-context';
-import { type TeamBoardState } from '../../../shared/types';
 import { parseDocx, getQuizzes, updateQuiz, deleteQuiz } from '../api/quiz-api';
 import { quickCreateRoom, launchExistingRoom } from '../api/room-api';
 import { blankQuestion, type QuestionDraft, type Tab, uid } from '../types';

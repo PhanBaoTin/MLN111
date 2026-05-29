@@ -52,6 +52,15 @@ let RealtimeGateway = class RealtimeGateway {
             this.server.to(roomId).emit('game:leaderboard', { roomId, leaderboard });
         }
     }
+    async handleRoomInfo(payload) {
+        try {
+            const info = await this.realtimeService.getRoomInfoByKey(payload.key);
+            return { ok: true, info };
+        }
+        catch (err) {
+            return { ok: false, message: err.message };
+        }
+    }
     async handleRoomJoin(client, payload) {
         const { room, player } = await this.realtimeService.joinRoom(payload, client.id);
         const roomId = room.id.toString();
@@ -68,7 +77,7 @@ let RealtimeGateway = class RealtimeGateway {
         });
         const leaderboard = await this.realtimeService.getLeaderboard(roomId);
         this.server.to(roomId).emit('game:leaderboard', { roomId, leaderboard });
-        return { ok: true, roomId, playerId: player._id.toString() };
+        return { ok: true, roomId, playerId: player._id.toString(), team: player.team };
     }
     async handleRoomLeave(client, payload) {
         client.leave(payload.roomId);
@@ -195,11 +204,11 @@ let RealtimeGateway = class RealtimeGateway {
     }
     getBoardSnapshot(roomId, team) {
         const state = this.realtimeService['roomState'].get(roomId);
-        return state ? Array.from(state.teamBoards[team].clearedTiles) : [];
+        return state && state.teamBoards[team] ? Array.from(state.teamBoards[team].clearedTiles) : [];
     }
     getTeamResets(roomId, team) {
         const state = this.realtimeService['roomState'].get(roomId);
-        return state?.teamBoards[team].resets ?? 0;
+        return state?.teamBoards[team]?.resets ?? 0;
     }
 };
 exports.RealtimeGateway = RealtimeGateway;
@@ -209,6 +218,13 @@ __decorate([
 ], RealtimeGateway.prototype, "server", void 0);
 __decorate([
     (0, common_1.UsePipes)(WS_PIPE),
+    (0, websockets_1.SubscribeMessage)('room:info'),
+    __param(0, (0, websockets_1.MessageBody)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], RealtimeGateway.prototype, "handleRoomInfo", null);
+__decorate([
     (0, websockets_1.SubscribeMessage)('room:join'),
     __param(0, (0, websockets_1.ConnectedSocket)()),
     __param(1, (0, websockets_1.MessageBody)()),

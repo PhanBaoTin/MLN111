@@ -3,7 +3,7 @@ export declare class Player {
     roomId: Types.ObjectId;
     socketId?: string | null;
     nickname: string;
-    team?: 'red' | 'blue';
+    team?: string;
     score: number;
     streak: number;
     resetCount: number;

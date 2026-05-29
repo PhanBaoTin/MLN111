@@ -37,7 +37,7 @@ __decorate([
     __metadata("design:type", String)
 ], Player.prototype, "nickname", void 0);
 __decorate([
-    (0, mongoose_1.Prop)({ enum: ['red', 'blue'] }),
+    (0, mongoose_1.Prop)({ type: String }),
     __metadata("design:type", String)
 ], Player.prototype, "team", void 0);
 __decorate([

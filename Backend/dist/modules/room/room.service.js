@@ -36,7 +36,8 @@ let RoomService = class RoomService {
             settings: {
                 shuffleQuestions: dto.shuffleQuestions ?? false,
                 shuffleOptions: dto.shuffleOptions ?? false,
-                maxPlayers: dto.maxPlayers,
+                maxTeams: dto.maxTeams ?? 2,
+                globalTimeLimit: dto.globalTimeLimit ?? 0,
             },
         });
     }
@@ -58,7 +59,8 @@ let RoomService = class RoomService {
             settings: {
                 shuffleQuestions: dto.shuffleQuestions ?? false,
                 shuffleOptions: dto.shuffleOptions ?? false,
-                maxPlayers: dto.maxPlayers,
+                maxTeams: dto.maxTeams ?? 2,
+                globalTimeLimit: dto.globalTimeLimit ?? 0,
             },
         });
         return {
@@ -81,7 +83,8 @@ let RoomService = class RoomService {
             settings: {
                 shuffleQuestions: dto.shuffleQuestions ?? false,
                 shuffleOptions: dto.shuffleOptions ?? false,
-                maxPlayers: dto.maxPlayers,
+                maxTeams: dto.maxTeams ?? 2,
+                globalTimeLimit: dto.globalTimeLimit ?? 0,
             },
         });
         return {
@@ -107,7 +110,8 @@ let RoomService = class RoomService {
             settings: {
                 shuffleQuestions: dto.shuffleQuestions,
                 shuffleOptions: dto.shuffleOptions,
-                maxPlayers: dto.maxPlayers,
+                maxTeams: dto.maxTeams,
+                globalTimeLimit: dto.globalTimeLimit,
             },
         }, { new: true })
             .exec();

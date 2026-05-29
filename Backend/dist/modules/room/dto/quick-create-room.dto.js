@@ -22,7 +22,8 @@ class QuickCreateRoomDto {
     pin;
     shuffleQuestions;
     shuffleOptions;
-    maxPlayers;
+    maxTeams;
+    globalTimeLimit;
 }
 exports.QuickCreateRoomDto = QuickCreateRoomDto;
 __decorate([
@@ -67,7 +68,13 @@ __decorate([
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsInt)(),
-    (0, class_validator_1.Min)(1),
+    (0, class_validator_1.Min)(2),
     __metadata("design:type", Number)
-], QuickCreateRoomDto.prototype, "maxPlayers", void 0);
+], QuickCreateRoomDto.prototype, "maxTeams", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsInt)(),
+    (0, class_validator_1.Min)(0),
+    __metadata("design:type", Number)
+], QuickCreateRoomDto.prototype, "globalTimeLimit", void 0);
 //# sourceMappingURL=quick-create-room.dto.js.map

@@ -14,10 +14,25 @@ export declare class RealtimeGateway implements OnGatewayInit {
     afterInit(_server: Server): void;
     handleConnection(client: Socket): void;
     handleDisconnect(client: Socket): Promise<void>;
+    handleRoomInfo(payload: {
+        key: string;
+    }): Promise<{
+        ok: boolean;
+        info: {
+            pin: string;
+            maxTeams: number;
+        };
+        message?: undefined;
+    } | {
+        ok: boolean;
+        message: string;
+        info?: undefined;
+    }>;
     handleRoomJoin(client: Socket, payload: JoinRoomDto): Promise<{
         ok: boolean;
         roomId: any;
         playerId: string;
+        team: string | undefined;
     }>;
     handleRoomLeave(client: Socket, payload: LeaveRoomDto): Promise<{
         ok: boolean;

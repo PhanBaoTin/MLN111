@@ -1,18 +1,20 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSocket } from '../../../app/socket/socket-context';
 
 export function HomePage() {
-  const { gameState, joinRoom } = useSocket();
+  const { gameState, joinRoom, socket } = useSocket();
   const { connected } = gameState;
   const navigate = useNavigate();
 
   const queryParams = new URLSearchParams(window.location.search);
   const [pin, setPin] = useState(() => queryParams.get('pin') ?? '');
   const [nickname, setNickname] = useState('');
-  const [team, setTeam] = useState<'red' | 'blue'>('red');
   const [joining, setJoining] = useState(false);
   const [error, setError] = useState('');
+  const TEAM_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'cyan', 'pink', 'teal'];
+  const [teamOptions, setTeamOptions] = useState<string[]>(() => TEAM_COLORS.slice(0, 8));
+  const [selectedTeam, setSelectedTeam] = useState<string | null>(() => TEAM_COLORS[0]);
 
   const playerIdRef = useRef<string | null>(localStorage.getItem('playerId'));
   const roomIdRef = useRef<string | null>(localStorage.getItem('roomId'));
@@ -24,15 +26,19 @@ export function HomePage() {
   async function handleJoin(e: React.FormEvent) {
     e.preventDefault();
     if (!pin.trim() || !nickname.trim()) return;
+    if (teamOptions.length > 0 && !selectedTeam) {
+      setError('Please select a team before joining.');
+      return;
+    }
     setJoining(true);
     setError('');
     try {
-      const result = await joinRoom(pin.trim(), nickname.trim(), team);
+      const result = await joinRoom(pin.trim(), nickname.trim(), selectedTeam ?? undefined);
       playerIdRef.current = result.playerId;
       roomIdRef.current = result.roomId;
       localStorage.setItem('playerId', result.playerId);
       localStorage.setItem('roomId', result.roomId);
-      localStorage.setItem('team', team);
+      localStorage.setItem('team', result.team);
       navigate('/waiting');
     } catch {
       setError('Could not join room – check PIN and try again.');
@@ -40,6 +46,38 @@ export function HomePage() {
       setJoining(false);
     }
   }
+
+  useEffect(() => {
+    if (!socket) return;
+
+    // If no PIN yet, show default two-team options.
+    if (!pin) {
+      const fallback = TEAM_COLORS.slice(0, 2);
+      setTeamOptions(fallback);
+      setSelectedTeam((prev) => prev ?? fallback[0] ?? null);
+      return;
+    }
+
+    // Query server for room info (maxTeams) by PIN
+    try {
+      socket.emit('room:info', { key: pin.trim() }, (ack: any) => {
+        if (ack?.ok && ack.info?.maxTeams) {
+          const max = Math.min(ack.info.maxTeams, TEAM_COLORS.length);
+          const opts = TEAM_COLORS.slice(0, max);
+          setTeamOptions(opts);
+          setSelectedTeam((prev) => prev ?? opts[0] ?? null);
+        } else {
+          const fallback = TEAM_COLORS.slice(0, 2);
+          setTeamOptions(fallback);
+          setSelectedTeam((prev) => prev ?? fallback[0] ?? null);
+        }
+      });
+    } catch {
+      const fallback = TEAM_COLORS.slice(0, 2);
+      setTeamOptions(fallback);
+      setSelectedTeam((prev) => prev ?? fallback[0] ?? null);
+    }
+  }, [pin, socket]);
 
   return (
     <div className="flex h-[80vh] flex-col items-center justify-center p-4">
@@ -68,23 +106,25 @@ export function HomePage() {
                 onChange={(e) => setNickname(e.target.value)} maxLength={20} required
                 className="w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-base text-white outline-none focus:border-[color:var(--accent)] focus:bg-black/40 text-center transition-all" />
             </div>
-            <div>
-              <label className="text-[10px] text-[color:var(--muted)] mb-1.5 block uppercase tracking-widest">Select Team</label>
-              <div className="flex gap-2">
-                {(['red', 'blue'] as const).map((t) => (
-                  <button key={t} type="button" id={`team-${t}`} onClick={() => setTeam(t)}
-                    className="group/team flex-1 rounded-2xl border py-3 text-sm font-bold uppercase tracking-widest transition-all duration-300 hover:scale-[1.02]"
-                    style={team === t ? {
-                      background: t === 'red' ? 'rgba(255, 106, 61, 0.15)' : 'rgba(27, 153, 139, 0.15)',
-                      borderColor: t === 'red' ? '#ff6a3d' : '#1b998b',
-                      color: t === 'red' ? '#ff6a3d' : '#1b998b',
-                      boxShadow: `0 0 15px ${t === 'red' ? 'rgba(255, 106, 61, 0.2)' : 'rgba(27, 153, 139, 0.2)'}`
-                    } : { borderColor: 'rgba(255,255,255,0.1)', color: 'var(--muted)' }}>
-                    {t === 'red' ? <span className="inline-block group-hover/team:animate-wiggle">🔴</span> : <span className="inline-block group-hover/team:animate-wiggle">🔵</span>} {t}
-                  </button>
-                ))}
+
+            {teamOptions.length > 0 && (
+              <div className="group">
+                <label className="text-[10px] text-[color:var(--muted)] mb-1.5 block uppercase tracking-widest">Choose Team</label>
+                <div className="flex gap-2 flex-wrap">
+                  {teamOptions.map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setSelectedTeam(t)}
+                      className={`px-3 py-2 rounded-xl border ${selectedTeam === t ? 'bg-white/10 border-white/40' : 'border-white/10'} text-sm font-semibold`}
+                    >
+                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
+
             <button id="join-submit" type="submit" disabled={joining || !connected}
               className="group mt-4 w-full rounded-2xl px-4 py-3 text-base font-bold text-white shadow-[0_0_20px_rgba(255,140,105,0.3)] transition-all disabled:opacity-50 hover:scale-[1.02] hover:shadow-[0_0_30px_rgba(255,140,105,0.5)] active:scale-95"
               style={{ background: 'linear-gradient(135deg, var(--accent), #ff6a3d)' }}>

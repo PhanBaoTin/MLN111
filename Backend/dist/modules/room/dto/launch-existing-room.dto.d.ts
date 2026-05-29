@@ -3,5 +3,6 @@ export declare class LaunchExistingRoomDto {
     pin: string;
     shuffleQuestions?: boolean;
     shuffleOptions?: boolean;
-    maxPlayers?: number;
+    maxTeams?: number;
+    globalTimeLimit?: number;
 }

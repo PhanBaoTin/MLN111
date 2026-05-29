@@ -6,20 +6,27 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.RoomStateService = void 0;
+exports.RoomStateService = exports.TEAM_COLORS = void 0;
 const common_1 = require("@nestjs/common");
+exports.TEAM_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'cyan', 'pink'];
 let RoomStateService = class RoomStateService {
     rooms = new Map();
-    init(roomId, quizId, questionCount, hostToken, shuffle = false) {
+    init(roomId, quizId, questionCount, hostToken, shuffle = false, maxTeams = 2) {
         const existing = this.rooms.get(roomId);
         if (existing?.timerHandle)
             clearTimeout(existing.timerHandle);
+        if (existing?.globalTimerHandle)
+            clearTimeout(existing.globalTimerHandle);
         const order = Array.from({ length: questionCount }, (_, i) => i);
         if (shuffle) {
             for (let i = order.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [order[i], order[j]] = [order[j], order[i]];
             }
+        }
+        const teamBoards = {};
+        for (let i = 0; i < maxTeams && i < exports.TEAM_COLORS.length; i++) {
+            teamBoards[exports.TEAM_COLORS[i]] = { clearedTiles: new Set(), resets: 0 };
         }
         const state = {
             roomId,
@@ -29,14 +36,14 @@ let RoomStateService = class RoomStateService {
             questionOrder: order,
             timerEndsAt: null,
             timerHandle: null,
-            teamBoards: {
-                red: { clearedTiles: new Set(), resets: 0 },
-                blue: { clearedTiles: new Set(), resets: 0 },
-            },
+            globalTimerEndsAt: null,
+            globalTimerHandle: null,
+            teamBoards,
             hostToken,
             submitCooldown: new Map(),
             startedAt: null,
             winnerId: null,
+            maxTeams,
         };
         this.rooms.set(roomId, state);
         return state;
@@ -51,12 +58,19 @@ let RoomStateService = class RoomStateService {
         const state = this.rooms.get(roomId);
         if (state?.timerHandle)
             clearTimeout(state.timerHandle);
+        if (state?.globalTimerHandle)
+            clearTimeout(state.globalTimerHandle);
         this.rooms.delete(roomId);
     }
     setTimerHandle(roomId, handle) {
         const state = this.rooms.get(roomId);
         if (state)
             state.timerHandle = handle;
+    }
+    setGlobalTimerHandle(roomId, handle) {
+        const state = this.rooms.get(roomId);
+        if (state)
+            state.globalTimerHandle = handle;
     }
     clearTimer(roomId) {
         const state = this.rooms.get(roomId);
@@ -65,30 +79,36 @@ let RoomStateService = class RoomStateService {
             state.timerHandle = null;
         }
     }
+    clearGlobalTimer(roomId) {
+        const state = this.rooms.get(roomId);
+        if (state?.globalTimerHandle) {
+            clearTimeout(state.globalTimerHandle);
+            state.globalTimerHandle = null;
+        }
+    }
     snapshot(roomId) {
         const s = this.rooms.get(roomId);
         if (!s)
             return null;
+        const teamBoardsSnapshot = {};
+        for (const [team, board] of Object.entries(s.teamBoards)) {
+            teamBoardsSnapshot[team] = {
+                clearedTiles: Array.from(board.clearedTiles),
+                resets: board.resets,
+                tilesWonAt: board.tilesWonAt ?? null,
+            };
+        }
         return {
             roomId: s.roomId,
             phase: s.phase,
             currentQuestionIndex: s.currentQuestionIndex,
             questionOrder: s.questionOrder,
             timerEndsAt: s.timerEndsAt,
-            teamBoards: {
-                red: {
-                    clearedTiles: Array.from(s.teamBoards.red.clearedTiles),
-                    resets: s.teamBoards.red.resets,
-                    tilesWonAt: s.teamBoards.red.tilesWonAt ?? null,
-                },
-                blue: {
-                    clearedTiles: Array.from(s.teamBoards.blue.clearedTiles),
-                    resets: s.teamBoards.blue.resets,
-                    tilesWonAt: s.teamBoards.blue.tilesWonAt ?? null,
-                },
-            },
+            globalTimerEndsAt: s.globalTimerEndsAt,
+            teamBoards: teamBoardsSnapshot,
             startedAt: s.startedAt,
             winnerId: s.winnerId,
+            maxTeams: s.maxTeams,
         };
     }
 };

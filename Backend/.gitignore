@@ -11,3 +11,5 @@ build/
 *.log
 .vscode/
 public/uploads/
+tsconfig.json/
+configuration.ts

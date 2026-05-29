@@ -5,5 +5,6 @@ export declare class CreateRoomDto {
     currentQuestionIndex?: number;
     shuffleQuestions?: boolean;
     shuffleOptions?: boolean;
-    maxPlayers?: number;
+    maxTeams?: number;
+    globalTimeLimit?: number;
 }

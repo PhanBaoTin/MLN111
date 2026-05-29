@@ -17,6 +17,11 @@ export class LaunchExistingRoomDto {
 
   @IsOptional()
   @IsInt()
-  @Min(1)
-  maxPlayers?: number;
+  @Min(2)
+  maxTeams?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  globalTimeLimit?: number;
 }

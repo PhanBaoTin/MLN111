@@ -16,8 +16,6 @@ import { RoomStateService, GamePhase } from './room-state.service';
 /** ms between allowed submits from the same player (anti-spam). */
 const SUBMIT_COOLDOWN_MS = 1_000;
 
-/** Number of tiles in each team board. */
-const BOARD_SIZE = 9;
 
 @Injectable()
 export class RealtimeService {
@@ -37,6 +35,13 @@ export class RealtimeService {
       return this.roomModel.findById(roomKey).exec();
     }
     return this.roomModel.findOne({ pin: roomKey }).exec();
+  }
+
+  /** Returns basic room info (maxTeams, pin) for a given room key (id or pin). */
+  async getRoomInfoByKey(roomKey: string) {
+    const room = await this.findRoomByKey(roomKey);
+    if (!room) throw new WsException('Room not found');
+    return { pin: room.pin, maxTeams: room.settings?.maxTeams ?? 2 };
   }
 
   private async findRoom(payload: JoinRoomDto) {
@@ -62,17 +67,40 @@ export class RealtimeService {
       .findOne({ roomId: room._id, nickname: payload.nickname })
       .exec();
 
+    // Auto-assign team if not provided
+    let teamToAssign = payload.team;
+    if (!teamToAssign && !player?.team) {
+      const maxTeams = room.settings?.maxTeams ?? 2;
+      const players = await this.playerModel.find({ roomId: room._id }).exec();
+      const counts: Record<string, number> = {};
+      const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'cyan', 'pink'];
+      for (let i = 0; i < maxTeams; i++) counts[colors[i]] = 0;
+      players.forEach(p => { if (p.team && counts[p.team] !== undefined) counts[p.team]++; });
+      
+      let minTeam = colors[0];
+      let minCount = Infinity;
+      for (let i = 0; i < maxTeams; i++) {
+        if (counts[colors[i]] < minCount) {
+          minCount = counts[colors[i]];
+          minTeam = colors[i];
+        }
+      }
+      // SỬA LỖI 1: Ép kiểu sang any để tương thích với mọi biến thể định nghĩa màu của Player Model
+      teamToAssign = minTeam as any;
+    }
+
     if (player) {
       player.socketId = socketId;
       player.connected = true;
       if (payload.team) player.team = payload.team;
+      else if (!player.team) player.team = teamToAssign;
       await player.save();
     } else {
       player = await this.playerModel.create({
         roomId: room._id,
         socketId,
         nickname: payload.nickname,
-        team: payload.team,
+        team: teamToAssign,
         score: 0,
         streak: 0,
         resetCount: 0,
@@ -131,11 +159,11 @@ export class RealtimeService {
 
   /**
    * Returns:
-   *  - standard answer result fields
-   *  - boardUpdate: which tile was cleared (or null)
-   *  - resetBoard: true when the team's board is fully reset
-   *  - winEvent: { winner } if a team just won
-   *  - timerCallback: function the gateway should schedule for time-out (if start caused a new timer)
+   * - standard answer result fields
+   * - boardUpdate: which tile was cleared (or null)
+   * - resetBoard: true when the team's board is fully reset
+   * - winEvent: { winner } if a team just won
+   * - timerCallback: function the gateway should schedule for time-out (if start caused a new timer)
    */
   async submitAnswer(
     payload: AnswerQuestionDto,
@@ -196,19 +224,19 @@ export class RealtimeService {
       .findByIdAndUpdate(payload.playerId, playerUpdate, { new: true })
       .exec();
 
-    const team = player?.team as 'red' | 'blue' | undefined;
+    const team = player?.team as string | undefined;
 
     // ── Update team board ─────────────────────────────────────────────────
     let clearedTileIndex: number | null = null;
     let resetBoard = false;
-    let winEvent: { winner: 'red' | 'blue' | 'tie' } | null = null;
+    let winEvent: { winner: string | 'tie' } | null = null;
 
-    if (team && (team === 'red' || team === 'blue')) {
+    if (team && state.teamBoards[team]) {
       const board = state.teamBoards[team];
 
       if (isCorrect) {
-        // Find first locked tile (0-8 not yet cleared)
-        for (let i = 0; i < BOARD_SIZE; i++) {
+        // Find first locked tile (0 to N not yet cleared)
+        for (let i = 0; i < quiz.questions.length; i++) {
           if (!board.clearedTiles.has(i)) {
             board.clearedTiles.add(i);
             clearedTileIndex = i;
@@ -217,7 +245,7 @@ export class RealtimeService {
         }
 
         // Check win condition
-        if (board.clearedTiles.size === BOARD_SIZE) {
+        if (board.clearedTiles.size === quiz.questions.length) {
           board.tilesWonAt = Date.now();
           winEvent = { winner: team };
           // End the game
@@ -250,6 +278,7 @@ export class RealtimeService {
 
   async handleAdminControl(
     payload: AdminControlDto,
+    // SỬA LỖI 2: Đồng bộ kiểu của winner thành kiểu nghiêm ngặt '"red" | "blue" | "tie"'
     onTimeout: (roomId: string, winner: 'red' | 'blue' | 'tie') => void,
   ) {
     // ── Host token check ──────────────────────────────────────────────────
@@ -282,6 +311,7 @@ export class RealtimeService {
           quiz.questions.length,
           payload.hostToken,
           room.settings.shuffleQuestions,
+          room.settings.maxTeams,
         );
       } else {
         // Resuming from paused
@@ -304,6 +334,17 @@ export class RealtimeService {
       }, timeLimitMs);
       this.roomState.setTimerHandle(payload.roomId, handle);
 
+      // Global timer
+      if (room.settings.globalTimeLimit && room.settings.globalTimeLimit > 0) {
+        const globalLimitMs = room.settings.globalTimeLimit * 1000;
+        s.globalTimerEndsAt = Date.now() + globalLimitMs;
+        this.roomState.clearGlobalTimer(payload.roomId);
+        const gHandle = setTimeout(async () => {
+          await this.handleGlobalTimeout(payload.roomId, onTimeout);
+        }, globalLimitMs);
+        this.roomState.setGlobalTimerHandle(payload.roomId, gHandle);
+      }
+
       updates.status = 'playing';
       updates.startedAt = new Date(s.startedAt);
     }
@@ -311,6 +352,7 @@ export class RealtimeService {
     if (payload.action === 'pause') {
       state!.phase = 'paused';
       this.roomState.clearTimer(payload.roomId);
+      this.roomState.clearGlobalTimer(payload.roomId);
       updates.status = 'waiting';
     }
 
@@ -326,6 +368,7 @@ export class RealtimeService {
         questionCount,
         payload.hostToken,
         room?.settings.shuffleQuestions ?? false,
+        room?.settings.maxTeams ?? 2,
       );
 
       // Reset all player stats
@@ -340,6 +383,7 @@ export class RealtimeService {
 
     if (payload.action === 'end') {
       this.roomState.clearTimer(payload.roomId);
+      this.roomState.clearGlobalTimer(payload.roomId);
       state!.phase = 'finished';
 
       // Determine winner by tiles cleared
@@ -381,7 +425,7 @@ export class RealtimeService {
       const winner = this.determineWinnerByTiles(roomId);
       state.winnerId = winner;
       await this.roomModel.findByIdAndUpdate(roomId, { status: 'finished', endedAt: new Date() }).exec();
-      onTimeout(roomId, winner);
+      onTimeout(roomId, winner as any);
       return;
     }
 
@@ -399,32 +443,61 @@ export class RealtimeService {
     this.roomState.setTimerHandle(roomId, handle);
 
     // Signal gateway to broadcast new question + updated timer
-    onTimeout(roomId, null as unknown as 'red');
+    onTimeout(roomId, null as unknown as any);
+  }
+
+  // ─── Global Timeout ──────────────────────────────────────────────────────
+
+  private async handleGlobalTimeout(
+    roomId: string,
+    onTimeout: (roomId: string, winner: 'red' | 'blue' | 'tie') => void,
+  ) {
+    const state = this.roomState.get(roomId);
+    if (!state || state.phase !== 'playing') return;
+
+    state.phase = 'finished';
+    state.globalTimerHandle = null;
+    this.roomState.clearTimer(roomId);
+
+    const winner = this.determineWinnerByTiles(roomId);
+    state.winnerId = winner;
+    await this.roomModel.findByIdAndUpdate(roomId, { status: 'finished', endedAt: new Date() }).exec();
+    onTimeout(roomId, winner as any);
   }
 
   // ─── Win Resolution ──────────────────────────────────────────────────────
 
   private async resolveWin(
     roomId: string,
-    winner: 'red' | 'blue',
+    winner: string,
     state: ReturnType<typeof this.roomState.get> & object,
     onTimeout: (roomId: string, winner: 'red' | 'blue' | 'tie') => void,
   ) {
     this.roomState.clearTimer(roomId);
+    this.roomState.clearGlobalTimer(roomId);
     state.phase = 'finished';
     state.winnerId = winner;
     await this.roomModel.findByIdAndUpdate(roomId, { status: 'finished', endedAt: new Date() }).exec();
-    onTimeout(roomId, winner);
+    onTimeout(roomId, winner as any);
   }
 
-  private determineWinnerByTiles(roomId: string): 'red' | 'blue' | 'tie' {
+  private determineWinnerByTiles(roomId: string): string | 'tie' {
     const state = this.roomState.get(roomId);
     if (!state) return 'tie';
-    const redTiles = state.teamBoards.red.clearedTiles.size;
-    const blueTiles = state.teamBoards.blue.clearedTiles.size;
-    if (redTiles > blueTiles) return 'red';
-    if (blueTiles > redTiles) return 'blue';
-    return 'tie';
+    
+    let maxTiles = -1;
+    let winner = 'tie';
+    
+    for (const [team, board] of Object.entries(state.teamBoards)) {
+      if (board.clearedTiles.size > maxTiles) {
+        maxTiles = board.clearedTiles.size;
+        winner = team;
+      } else if (board.clearedTiles.size === maxTiles) {
+        winner = 'tie';
+      }
+    }
+    
+    return winner;
   }
 
   // ─── Queries ─────────────────────────────────────────────────────────────
@@ -495,7 +568,7 @@ export class RealtimeService {
 
   async getPlayersByKey(
     roomKey: string,
-    filters?: { team?: 'red' | 'blue' | 'unassigned'; connected?: boolean },
+    filters?: { team?: string | 'unassigned'; connected?: boolean },
   ) {
     const room = await this.findRoomByKey(roomKey);
     if (!room) throw new WsException('Room not found');

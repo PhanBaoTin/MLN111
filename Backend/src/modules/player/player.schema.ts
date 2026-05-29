@@ -12,8 +12,8 @@ export class Player {
   @Prop({ required: true })
   nickname: string;
 
-  @Prop({ enum: ['red', 'blue'] })
-  team?: 'red' | 'blue';
+  @Prop({ type: String })
+  team?: string;
 
   @Prop({ default: 0 })
   score: number;

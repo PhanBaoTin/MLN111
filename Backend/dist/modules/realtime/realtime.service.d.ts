@@ -17,6 +17,10 @@ export declare class RealtimeService {
     private readonly roomState;
     constructor(roomModel: Model<RoomDocument>, quizModel: Model<QuizDocument>, playerModel: Model<PlayerDocument>, playerAnswerModel: Model<PlayerAnswerDocument>, roomState: RoomStateService);
     private findRoomByKey;
+    getRoomInfoByKey(roomKey: string): Promise<{
+        pin: string;
+        maxTeams: number;
+    }>;
     private findRoom;
     joinRoom(payload: JoinRoomDto, socketId: string): Promise<{
         room: import("mongoose").Document<unknown, {}, import("mongoose").Document<unknown, {}, Room, {}, {}> & Room & {
@@ -74,7 +78,7 @@ export declare class RealtimeService {
         leaderboard: {
             id: string;
             nickname: string;
-            team: "red" | "blue" | null;
+            team: string | null;
             score: number;
             resetCount: number;
             streak: number;
@@ -106,7 +110,7 @@ export declare class RealtimeService {
         leaderboard: {
             id: string;
             nickname: string;
-            team: "red" | "blue" | null;
+            team: string | null;
             score: number;
             resetCount: number;
             streak: number;
@@ -115,9 +119,9 @@ export declare class RealtimeService {
         shouldReset: boolean;
         clearedTileIndex: number | null;
         resetBoard: boolean;
-        team: "red" | "blue" | null;
+        team: string | null;
         winEvent: {
-            winner: "red" | "blue" | "tie";
+            winner: string | "tie";
         } | null;
     }>;
     handleAdminControl(payload: AdminControlDto, onTimeout: (roomId: string, winner: 'red' | 'blue' | 'tie') => void): Promise<{
@@ -136,12 +140,13 @@ export declare class RealtimeService {
         snapshot: Record<string, unknown> | null;
     }>;
     private handleQuestionTimeout;
+    private handleGlobalTimeout;
     private resolveWin;
     private determineWinnerByTiles;
     getLeaderboard(roomId: string): Promise<{
         id: string;
         nickname: string;
-        team: "red" | "blue" | null;
+        team: string | null;
         score: number;
         resetCount: number;
         streak: number;
@@ -168,7 +173,7 @@ export declare class RealtimeService {
         leaderboard: {
             id: string;
             nickname: string;
-            team: "red" | "blue" | null;
+            team: string | null;
             score: number;
             resetCount: number;
             streak: number;
@@ -179,19 +184,19 @@ export declare class RealtimeService {
     getLeaderboardByKey(roomKey: string): Promise<{
         id: string;
         nickname: string;
-        team: "red" | "blue" | null;
+        team: string | null;
         score: number;
         resetCount: number;
         streak: number;
         connected: boolean;
     }[]>;
     getPlayersByKey(roomKey: string, filters?: {
-        team?: 'red' | 'blue' | 'unassigned';
+        team?: string | 'unassigned';
         connected?: boolean;
     }): Promise<{
         id: string;
         nickname: string;
-        team: "red" | "blue" | null;
+        team: string | null;
         score: number;
         resetCount: number;
         streak: number;

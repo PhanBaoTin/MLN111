@@ -30,7 +30,7 @@ export interface GameState {
   /** Players in waiting room */
   players: PlayerInfo[];
   /** Winner id after game ends */
-  winner: 'red' | 'blue' | 'tie' | null;
+  winner: string | 'tie' | null;
   /** Connection status */
   connected: boolean;
   /** Room PIN (added for QR code generation) */
@@ -42,8 +42,8 @@ export interface GameState {
 export interface SocketContextValue {
   socket: Socket | null;
   gameState: GameState;
-  /** Join a room.  Returns { roomId, playerId } via ack. */
-  joinRoom: (pin: string, nickname: string, team?: 'red' | 'blue') => Promise<{ roomId: string; playerId: string }>;
+  /** Join a room.  Returns { roomId, playerId, team } via ack. */
+  joinRoom: (pin: string, nickname: string, team?: string) => Promise<{ roomId: string; playerId: string; team: string }>;
   /** Send an answer.  Requires game to be in 'playing' phase. */
   submitAnswer: (payload: {
     roomId: string;
@@ -159,7 +159,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
     socket.on(
       'game:board-update',
       (data: {
-        team: 'red' | 'blue';
+        team: string;
         clearedTiles: number[];
         resets: number;
         resetBoard: boolean;
@@ -236,10 +236,12 @@ export function SocketProvider({ children }: PropsWithChildren) {
               ...s.snapshot,
               phase: 'waiting',
               currentQuestionIndex: 0,
-              teamBoards: {
-                red: { clearedTiles: [], resets: 0, tilesWonAt: null },
-                blue: { clearedTiles: [], resets: 0, tilesWonAt: null },
-              },
+              teamBoards: Object.fromEntries(
+                Object.keys(s.snapshot.teamBoards || {}).map(team => [
+                  team, 
+                  { clearedTiles: [], resets: 0, tilesWonAt: null }
+                ])
+              ),
               winnerId: null,
             }
           : s.snapshot,
@@ -257,7 +259,7 @@ export function SocketProvider({ children }: PropsWithChildren) {
     });
 
     // ── Winner ────────────────────────────────────────────────────────────
-    socket.on('game:winner', (data: { winner: 'red' | 'blue' | 'tie' }) => {
+    socket.on('game:winner', (data: { winner: string | 'tie' }) => {
       setGameState((s) => ({
         ...s,
         winner: data.winner,
@@ -273,12 +275,12 @@ export function SocketProvider({ children }: PropsWithChildren) {
   // ── Actions ───────────────────────────────────────────────────────────────
 
   const joinRoom = useCallback(
-    (pin: string, nickname: string, team?: 'red' | 'blue') => {
-      return new Promise<{ roomId: string; playerId: string }>((resolve, reject) => {
+    (pin: string, nickname: string, team?: string) => {
+      return new Promise<{ roomId: string; playerId: string; team: string }>((resolve, reject) => {
         const s = socketRef.current;
         if (!s) return reject(new Error('Socket not initialised'));
-        s.emit('room:join', { pin, nickname, team }, (ack: { ok: boolean; roomId: string; playerId: string }) => {
-          if (ack?.ok) resolve({ roomId: ack.roomId, playerId: ack.playerId });
+        s.emit('room:join', { pin, nickname, team }, (ack: { ok: boolean; roomId: string; playerId: string; team: string }) => {
+          if (ack?.ok) resolve({ roomId: ack.roomId, playerId: ack.playerId, team: ack.team });
           else reject(new Error('Join failed'));
         });
       });

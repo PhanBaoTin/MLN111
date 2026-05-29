@@ -8,5 +8,6 @@ export declare class QuickCreateRoomDto {
     pin: string;
     shuffleQuestions?: boolean;
     shuffleOptions?: boolean;
-    maxPlayers?: number;
+    maxTeams?: number;
+    globalTimeLimit?: number;
 }

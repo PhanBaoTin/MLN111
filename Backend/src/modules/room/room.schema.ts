@@ -11,8 +11,11 @@ export class RoomSettings {
   @Prop({ default: false })
   shuffleOptions: boolean;
 
-  @Prop()
-  maxPlayers?: number;
+  @Prop({ default: 2 })
+  maxTeams: number;
+
+  @Prop({ default: 0 })
+  globalTimeLimit: number; // in seconds, 0 means no limit
 }
 
 @Schema({ collection: 'rooms', timestamps: { createdAt: true, updatedAt: false } })

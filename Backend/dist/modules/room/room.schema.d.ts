@@ -3,7 +3,8 @@ export type RoomStatus = 'waiting' | 'playing' | 'finished';
 export declare class RoomSettings {
     shuffleQuestions: boolean;
     shuffleOptions: boolean;
-    maxPlayers?: number;
+    maxTeams: number;
+    globalTimeLimit: number;
 }
 export declare class Room {
     pin: string;

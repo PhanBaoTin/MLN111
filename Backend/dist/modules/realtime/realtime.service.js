@@ -23,7 +23,6 @@ const quiz_schema_1 = require("../quiz/quiz.schema");
 const room_schema_1 = require("../room/room.schema");
 const room_state_service_1 = require("./room-state.service");
 const SUBMIT_COOLDOWN_MS = 1_000;
-const BOARD_SIZE = 9;
 let RealtimeService = class RealtimeService {
     roomModel;
     quizModel;
@@ -42,6 +41,12 @@ let RealtimeService = class RealtimeService {
             return this.roomModel.findById(roomKey).exec();
         }
         return this.roomModel.findOne({ pin: roomKey }).exec();
+    }
+    async getRoomInfoByKey(roomKey) {
+        const room = await this.findRoomByKey(roomKey);
+        if (!room)
+            throw new websockets_1.WsException('Room not found');
+        return { pin: room.pin, maxTeams: room.settings?.maxTeams ?? 2 };
     }
     async findRoom(payload) {
         if (payload.pin) {
@@ -62,11 +67,33 @@ let RealtimeService = class RealtimeService {
         let player = await this.playerModel
             .findOne({ roomId: room._id, nickname: payload.nickname })
             .exec();
+        let teamToAssign = payload.team;
+        if (!teamToAssign && !player?.team) {
+            const maxTeams = room.settings?.maxTeams ?? 2;
+            const players = await this.playerModel.find({ roomId: room._id }).exec();
+            const counts = {};
+            const colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'cyan', 'pink'];
+            for (let i = 0; i < maxTeams; i++)
+                counts[colors[i]] = 0;
+            players.forEach(p => { if (p.team && counts[p.team] !== undefined)
+                counts[p.team]++; });
+            let minTeam = colors[0];
+            let minCount = Infinity;
+            for (let i = 0; i < maxTeams; i++) {
+                if (counts[colors[i]] < minCount) {
+                    minCount = counts[colors[i]];
+                    minTeam = colors[i];
+                }
+            }
+            teamToAssign = minTeam;
+        }
         if (player) {
             player.socketId = socketId;
             player.connected = true;
             if (payload.team)
                 player.team = payload.team;
+            else if (!player.team)
+                player.team = teamToAssign;
             await player.save();
         }
         else {
@@ -74,7 +101,7 @@ let RealtimeService = class RealtimeService {
                 roomId: room._id,
                 socketId,
                 nickname: payload.nickname,
-                team: payload.team,
+                team: teamToAssign,
                 score: 0,
                 streak: 0,
                 resetCount: 0,
@@ -161,17 +188,17 @@ let RealtimeService = class RealtimeService {
         let clearedTileIndex = null;
         let resetBoard = false;
         let winEvent = null;
-        if (team && (team === 'red' || team === 'blue')) {
+        if (team && state.teamBoards[team]) {
             const board = state.teamBoards[team];
             if (isCorrect) {
-                for (let i = 0; i < BOARD_SIZE; i++) {
+                for (let i = 0; i < quiz.questions.length; i++) {
                     if (!board.clearedTiles.has(i)) {
                         board.clearedTiles.add(i);
                         clearedTileIndex = i;
                         break;
                     }
                 }
-                if (board.clearedTiles.size === BOARD_SIZE) {
+                if (board.clearedTiles.size === quiz.questions.length) {
                     board.tilesWonAt = Date.now();
                     winEvent = { winner: team };
                     await this.resolveWin(payload.roomId, team, state, onTimeout);
@@ -215,7 +242,7 @@ let RealtimeService = class RealtimeService {
             if (!quiz.questions.length)
                 throw new websockets_1.WsException('Quiz has no questions');
             if (!state) {
-                this.roomState.init(payload.roomId, room.quizId.toString(), quiz.questions.length, payload.hostToken, room.settings.shuffleQuestions);
+                this.roomState.init(payload.roomId, room.quizId.toString(), quiz.questions.length, payload.hostToken, room.settings.shuffleQuestions, room.settings.maxTeams);
             }
             else {
                 if (state.hostToken !== payload.hostToken)
@@ -232,25 +259,36 @@ let RealtimeService = class RealtimeService {
                 await this.handleQuestionTimeout(payload.roomId, onTimeout);
             }, timeLimitMs);
             this.roomState.setTimerHandle(payload.roomId, handle);
+            if (room.settings.globalTimeLimit && room.settings.globalTimeLimit > 0) {
+                const globalLimitMs = room.settings.globalTimeLimit * 1000;
+                s.globalTimerEndsAt = Date.now() + globalLimitMs;
+                this.roomState.clearGlobalTimer(payload.roomId);
+                const gHandle = setTimeout(async () => {
+                    await this.handleGlobalTimeout(payload.roomId, onTimeout);
+                }, globalLimitMs);
+                this.roomState.setGlobalTimerHandle(payload.roomId, gHandle);
+            }
             updates.status = 'playing';
             updates.startedAt = new Date(s.startedAt);
         }
         if (payload.action === 'pause') {
             state.phase = 'paused';
             this.roomState.clearTimer(payload.roomId);
+            this.roomState.clearGlobalTimer(payload.roomId);
             updates.status = 'waiting';
         }
         if (payload.action === 'reset') {
             const room = await this.roomModel.findById(payload.roomId).exec();
             const quiz = await this.quizModel.findById(room?.quizId).exec();
             const questionCount = quiz?.questions.length ?? 0;
-            this.roomState.init(payload.roomId, state.quizId, questionCount, payload.hostToken, room?.settings.shuffleQuestions ?? false);
+            this.roomState.init(payload.roomId, state.quizId, questionCount, payload.hostToken, room?.settings.shuffleQuestions ?? false, room?.settings.maxTeams ?? 2);
             await this.playerModel.updateMany({ roomId: payload.roomId }, { $set: { score: 0, streak: 0, resetCount: 0 } });
             updates.status = 'waiting';
             updates.currentQuestionIndex = 0;
         }
         if (payload.action === 'end') {
             this.roomState.clearTimer(payload.roomId);
+            this.roomState.clearGlobalTimer(payload.roomId);
             state.phase = 'finished';
             const winner = this.determineWinnerByTiles(payload.roomId);
             state.winnerId = winner;
@@ -293,8 +331,21 @@ let RealtimeService = class RealtimeService {
         this.roomState.setTimerHandle(roomId, handle);
         onTimeout(roomId, null);
     }
+    async handleGlobalTimeout(roomId, onTimeout) {
+        const state = this.roomState.get(roomId);
+        if (!state || state.phase !== 'playing')
+            return;
+        state.phase = 'finished';
+        state.globalTimerHandle = null;
+        this.roomState.clearTimer(roomId);
+        const winner = this.determineWinnerByTiles(roomId);
+        state.winnerId = winner;
+        await this.roomModel.findByIdAndUpdate(roomId, { status: 'finished', endedAt: new Date() }).exec();
+        onTimeout(roomId, winner);
+    }
     async resolveWin(roomId, winner, state, onTimeout) {
         this.roomState.clearTimer(roomId);
+        this.roomState.clearGlobalTimer(roomId);
         state.phase = 'finished';
         state.winnerId = winner;
         await this.roomModel.findByIdAndUpdate(roomId, { status: 'finished', endedAt: new Date() }).exec();
@@ -304,13 +355,18 @@ let RealtimeService = class RealtimeService {
         const state = this.roomState.get(roomId);
         if (!state)
             return 'tie';
-        const redTiles = state.teamBoards.red.clearedTiles.size;
-        const blueTiles = state.teamBoards.blue.clearedTiles.size;
-        if (redTiles > blueTiles)
-            return 'red';
-        if (blueTiles > redTiles)
-            return 'blue';
-        return 'tie';
+        let maxTiles = -1;
+        let winner = 'tie';
+        for (const [team, board] of Object.entries(state.teamBoards)) {
+            if (board.clearedTiles.size > maxTiles) {
+                maxTiles = board.clearedTiles.size;
+                winner = team;
+            }
+            else if (board.clearedTiles.size === maxTiles) {
+                winner = 'tie';
+            }
+        }
+        return winner;
     }
     async getLeaderboard(roomId) {
         const players = await this.playerModel

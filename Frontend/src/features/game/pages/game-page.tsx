@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { useCountdown } from '../../../app/hooks/use-countdown';
 import { useSocket } from '../../../app/socket/socket-context';
 import { type TeamBoardState } from '../../../shared/types';
-import { TILES } from '../types';
 
 export function GamePage() {
   const { socket, gameState, submitAnswer, requestSnapshot } = useSocket();
@@ -12,8 +11,13 @@ export function GamePage() {
 
   const roomId = localStorage.getItem('roomId') ?? '';
   const playerId = localStorage.getItem('playerId') ?? '';
-  const myTeam = (localStorage.getItem('team') ?? 'red') as 'red' | 'blue';
-  const opponentTeam: 'red' | 'blue' = myTeam === 'red' ? 'blue' : 'red';
+  const myTeam = localStorage.getItem('team') ?? 'red';
+
+  const colorMap: Record<string, string> = {
+    red: '#ff6a3d', blue: '#1b998b', green: '#4ade80', yellow: '#facc15',
+    purple: '#c084fc', orange: '#fb923c', cyan: '#22d3ee', pink: '#f472b6'
+  };
+  const myColor = colorMap[myTeam] || '#9ca3af';
 
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [answerResult, setAnswerResult] = useState<{ isCorrect: boolean; earnedScore: number } | null>(null);
@@ -51,7 +55,7 @@ export function GamePage() {
   }, [socket, playerId]);
 
   const myBoard: TeamBoardState = snapshot?.teamBoards?.[myTeam] ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
-  const opponentBoard: TeamBoardState = snapshot?.teamBoards?.[opponentTeam] ?? { clearedTiles: [], resets: 0, tilesWonAt: null };
+  const opponentBoards = Object.entries(snapshot?.teamBoards || {}).filter(([team]) => team !== myTeam);
   const myPlayer = leaderboard?.find((p) => p.id === playerId);
   const myScore = myPlayer?.score ?? 0;
   const myStreak = myPlayer?.streak ?? 0;
@@ -83,16 +87,16 @@ export function GamePage() {
         <div className="absolute inset-0 z-50 flex flex-col items-center justify-start pt-12 px-6 rounded-3xl overflow-y-auto"
           style={{ background: 'rgba(22,15,31,0.95)', backdropFilter: 'blur(16px)' }}>
           
-          <h2 className="text-5xl font-display mb-8 animate-slide-up" style={{ color: winner === myTeam ? '#1b998b' : (winner === 'tie' ? '#fff' : '#ff6a3d') }}>
+          <h2 className="text-5xl font-display mb-8 animate-slide-up" style={{ color: winner === myTeam ? myColor : (winner === 'tie' ? '#fff' : (colorMap[winner as string] || '#9ca3af')) }}>
             {winner === 'tie' ? <><span className="inline-block animate-wiggle">🤝</span> It's a Tie!</> 
               : winner === myTeam ? <><span className="inline-block animate-float">🏆</span> Victory!</> 
               : <><span className="inline-block animate-pulse-subtle">💀</span> Defeated</>}
           </h2>
 
           <p className="text-[color:var(--muted)] text-lg mb-10 animate-slide-up delay-100">
-            {winner === 'tie' ? 'Both teams tied on tiles!'
+            {winner === 'tie' ? 'Teams tied on tiles!'
               : winner === myTeam ? 'Your team revealed the image first!'
-              : `${opponentTeam.charAt(0).toUpperCase() + opponentTeam.slice(1)} team wins!`}
+              : `${(winner as string).charAt(0).toUpperCase() + (winner as string).slice(1)} team wins!`}
           </p>
 
           {/* PODIUM */}
@@ -181,12 +185,16 @@ export function GamePage() {
         <div className="flex flex-col min-h-0">
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <span className="text-sm font-semibold text-[color:var(--muted)] uppercase tracking-widest">
-              My Board · {myBoard.clearedTiles.length}/9 revealed
+              My Board · {myBoard.clearedTiles.length}/{snapshot?.questionOrder?.length || 0} revealed
             </span>
             {myBoard.resets > 0 && <span className="text-xs text-red-400">Reset ×{myBoard.resets}</span>}
           </div>
-          <div className="grid grid-cols-3 gap-2 flex-1 min-h-0">
-            {TILES.map((i) => {
+          <div className="grid gap-2 flex-1 min-h-0" 
+            style={{ 
+              gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9))}, 1fr)`,
+              gridTemplateRows: `repeat(${Math.ceil((snapshot?.questionOrder?.length || 9) / Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9)))}, 1fr)` 
+            }}>
+            {Array.from({ length: snapshot?.questionOrder?.length || 9 }, (_, i) => i).map((i) => {
               const isCleared = myBoard.clearedTiles.includes(i);
               const isFlashing = justCleared === i;
               return (
@@ -197,9 +205,9 @@ export function GamePage() {
                     backgroundSize: '300% 300%',
                     backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 50}%`,
                     backgroundColor: isCleared ? 'transparent' : undefined,
-                    borderColor: isCleared ? (myTeam === 'red' ? '#ff6a3d' : '#1b998b') : undefined,
+                    borderColor: isCleared ? myColor : undefined,
                     transform: isFlashing ? 'scale(1.08)' : 'scale(1)',
-                    boxShadow: isFlashing ? `0 0 20px ${myTeam === 'red' ? '#ff6a3d66' : '#1b998b66'}` : undefined,
+                    boxShadow: isFlashing ? `0 0 20px ${myColor}66` : undefined,
                   }}>
                   {isCleared ? (
                     <div className="absolute inset-0 flex items-center justify-center bg-black/30 backdrop-blur-[2px] rounded-[inherit] transition-all duration-500">
@@ -270,29 +278,33 @@ export function GamePage() {
             </div>
           </div>
 
-          <div className="flex-shrink-0 rounded-3xl border border-white/5 bg-white/5 p-5 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)] mb-2 font-bold">
-              Opponent ({opponentTeam}) · {opponentBoard.clearedTiles.length}/9
-            </p>
-            <div className="grid grid-cols-9 gap-1">
-              {TILES.map((i) => {
-                const isCleared = opponentBoard.clearedTiles.includes(i);
-                return (
-                  <div key={i} className="aspect-square rounded transition-all duration-300 relative"
-                    style={{ 
-                      backgroundImage: isCleared && imageBase64 ? `url(${imageBase64})` : undefined,
-                      backgroundSize: '300% 300%',
-                      backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 50}%`,
-                      backgroundColor: isCleared ? 'transparent' : 'var(--border)' 
-                    }}>
-                    {isCleared && <div className="absolute inset-0 bg-black/20 rounded-[inherit]" />}
-                  </div>
-                );
-              })}
-            </div>
-            {opponentBoard.resets > 0 && (
-              <p className="mt-2 text-[10px] text-[color:var(--muted)]">Reset ×{opponentBoard.resets}</p>
-            )}
+          <div className="flex-shrink-0 rounded-3xl border border-white/5 bg-white/5 p-5 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 flex gap-4 overflow-x-auto custom-scrollbar">
+            {opponentBoards.map(([oppTeam, oppBoard]) => (
+              <div key={oppTeam} className="flex-1 min-w-[120px]">
+                <p className="text-[10px] uppercase tracking-[0.3em] text-[color:var(--muted)] mb-2 font-bold truncate">
+                  {oppTeam} · {oppBoard.clearedTiles.length}/{snapshot?.questionOrder?.length || 0}
+                </p>
+                <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(snapshot?.questionOrder?.length || 9))}, 1fr)` }}>
+                  {Array.from({ length: snapshot?.questionOrder?.length || 9 }, (_, i) => i).map((i) => {
+                    const isCleared = oppBoard.clearedTiles.includes(i);
+                    return (
+                      <div key={i} className="aspect-square rounded transition-all duration-300 relative"
+                        style={{ 
+                          backgroundImage: isCleared && imageBase64 ? `url(${imageBase64})` : undefined,
+                          backgroundSize: '300% 300%',
+                          backgroundPosition: `${(i % 3) * 50}% ${Math.floor(i / 3) * 50}%`,
+                          backgroundColor: isCleared ? 'transparent' : 'var(--border)' 
+                        }}>
+                        {isCleared && <div className="absolute inset-0 bg-black/20 rounded-[inherit]" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                {oppBoard.resets > 0 && (
+                  <p className="mt-2 text-[10px] text-[color:var(--muted)]">Reset ×{oppBoard.resets}</p>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>

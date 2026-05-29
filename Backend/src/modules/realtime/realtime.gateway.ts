@@ -61,6 +61,16 @@ export class RealtimeGateway implements OnGatewayInit {
   // ─── Room join / leave ───────────────────────────────────────────────────
 
   @UsePipes(WS_PIPE)
+  @SubscribeMessage('room:info')
+  async handleRoomInfo(@MessageBody() payload: { key: string }) {
+    try {
+      const info = await this.realtimeService.getRoomInfoByKey(payload.key);
+      return { ok: true, info };
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    }
+  }
+
   @SubscribeMessage('room:join')
   async handleRoomJoin(@ConnectedSocket() client: Socket, @MessageBody() payload: JoinRoomDto) {
     const { room, player } = await this.realtimeService.joinRoom(payload, client.id);
@@ -81,7 +91,7 @@ export class RealtimeGateway implements OnGatewayInit {
     const leaderboard = await this.realtimeService.getLeaderboard(roomId);
     this.server.to(roomId).emit('game:leaderboard', { roomId, leaderboard });
 
-    return { ok: true, roomId, playerId: player._id.toString() };
+    return { ok: true, roomId, playerId: player._id.toString(), team: player.team };
   }
 
   @UsePipes(WS_PIPE)
@@ -166,8 +176,8 @@ export class RealtimeGateway implements OnGatewayInit {
         team: result.team,
         clearedTileIndex: result.clearedTileIndex,
         resetBoard: result.resetBoard,
-        clearedTiles: this.getBoardSnapshot(payload.roomId, result.team as 'red' | 'blue'),
-        resets: this.getTeamResets(payload.roomId, result.team as 'red' | 'blue'),
+        clearedTiles: this.getBoardSnapshot(payload.roomId, result.team as string),
+        resets: this.getTeamResets(payload.roomId, result.team as string),
       });
     }
 
@@ -243,7 +253,7 @@ export class RealtimeGateway implements OnGatewayInit {
    * or a winner is determined.  The callback has a closure over `this.server`.
    */
   private buildTimeoutCallback() {
-    return (roomId: string, winner: 'red' | 'blue' | 'tie' | null) => {
+    return (roomId: string, winner: string | 'tie' | null) => {
       if (winner !== null) {
         // Game over (win or time-based end)
         this.server.to(roomId).emit('game:winner', { roomId, winner });
@@ -264,13 +274,13 @@ export class RealtimeGateway implements OnGatewayInit {
     };
   }
 
-  private getBoardSnapshot(roomId: string, team: 'red' | 'blue'): number[] {
+  private getBoardSnapshot(roomId: string, team: string): number[] {
     const state = this.realtimeService['roomState'].get(roomId);
-    return state ? Array.from(state.teamBoards[team].clearedTiles) : [];
+    return state && state.teamBoards[team] ? Array.from(state.teamBoards[team].clearedTiles) : [];
   }
 
-  private getTeamResets(roomId: string, team: 'red' | 'blue'): number {
+  private getTeamResets(roomId: string, team: string): number {
     const state = this.realtimeService['roomState'].get(roomId);
-    return state?.teamBoards[team].resets ?? 0;
+    return state?.teamBoards[team]?.resets ?? 0;
   }
 }

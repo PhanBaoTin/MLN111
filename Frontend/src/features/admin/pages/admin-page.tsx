@@ -6,7 +6,6 @@ import { quickCreateRoom, launchExistingRoom } from '../api/room-api';
 import { blankQuestion, type QuestionDraft, type Tab, uid } from '../types';
 import { QRCodeSVG } from 'qrcode.react';
 
-const TILES = Array.from({ length: 9 }, (_, i) => i);
 
 export function AdminPage() {
   const { gameState, adminControl, requestSnapshot } = useSocket();
@@ -23,6 +22,8 @@ export function AdminPage() {
   const [questions, setQuestions] = useState<QuestionDraft[]>([blankQuestion()]);
   const [libraryQuizzes, setLibraryQuizzes] = useState<any[]>([]);
   const [shuffle, setShuffle] = useState(false);
+  const [maxTeams, setMaxTeams] = useState(2);
+  const [globalTimeLimit, setGlobalTimeLimit] = useState(0);
   const [creating, setCreating] = useState(false);
   const [createMsg, setCreateMsg] = useState('');
   const [editingQuizId, setEditingQuizId] = useState<string | null>(null);
@@ -91,7 +92,8 @@ export function AdminPage() {
       if (editingQuizId) {
         await updateQuiz(editingQuizId, {
           title,
-          questions: formattedQs
+          questions: formattedQs,
+          maxTeams,
         });
         setCreateMsg('✓ Quiz updated successfully!');
         setEditingQuizId(null);
@@ -104,6 +106,8 @@ export function AdminPage() {
           imageBase64: imageDataUrl ?? undefined,
           questions: formattedQs,
           shuffleQuestions: shuffle,
+          maxTeams,
+          globalTimeLimit,
         });
         const newRoomId = data.room._id;
         const newToken = data.hostToken;
@@ -226,14 +230,26 @@ export function AdminPage() {
                   className="w-full rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-sm font-mono tracking-widest outline-none focus:border-[color:var(--accent)] focus:bg-black/40 transition-all" />
               </div>
             </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <div className="grid gap-4 md:grid-cols-2 mt-4">
+              <div>
+                <label className="text-xs text-[color:var(--muted)] mb-2 block uppercase tracking-widest">Number of Teams</label>
+                <input type="number" min={2} max={8} value={maxTeams} onChange={(e) => setMaxTeams(parseInt(e.target.value))}
+                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-sm outline-none focus:border-[color:var(--accent)] focus:bg-black/40 transition-all" />
+              </div>
+              <div>
+                <label className="text-xs text-[color:var(--muted)] mb-2 block uppercase tracking-widest">Global Time Limit (seconds)</label>
+                <input type="number" min={0} value={globalTimeLimit} onChange={(e) => setGlobalTimeLimit(parseInt(e.target.value))} placeholder="0 for no limit"
+                  className="w-full rounded-2xl border border-white/10 bg-black/20 px-5 py-3 text-sm outline-none focus:border-[color:var(--accent)] focus:bg-black/40 transition-all" />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer mt-4">
               <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} className="accent-[var(--accent)]" />
               Shuffle question order
             </label>
           </div>
 
           <div className="stat-card space-y-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">Reveal image (9-tile board)</p>
+            <p className="text-xs uppercase tracking-[0.3em] text-[color:var(--muted)]">Reveal image ({questions.length}-tile board)</p>
             <p className="text-xs text-[color:var(--muted)]">Upload the secret image revealed tile-by-tile as teams answer correctly.</p>
             <div className="flex items-center gap-4 flex-wrap">
               <button type="button" id="upload-image-btn" onClick={() => fileInputRef.current?.click()}
@@ -246,8 +262,10 @@ export function AdminPage() {
             {imageDataUrl && (
               <div className="relative mt-2 w-fit">
                 <img src={imageDataUrl} alt="Reveal" className="max-h-40 rounded-2xl border object-cover" />
-                <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 rounded-2xl overflow-hidden">
-                  {TILES.map((i) => (
+                <div 
+                  className="absolute inset-0 grid rounded-2xl overflow-hidden" 
+                  style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(questions.length))}, 1fr)`, gridTemplateRows: `repeat(${Math.ceil(questions.length / Math.ceil(Math.sqrt(questions.length)))}, 1fr)` }}>
+                  {Array.from({ length: questions.length }, (_, i) => i).map((i) => (
                     <div key={i} className="border border-white/30 bg-[color:var(--ink)]/40 flex items-center justify-center">
                       <span className="text-white/60 text-xs font-bold">{i + 1}</span>
                     </div>
@@ -452,26 +470,35 @@ export function AdminPage() {
             )}
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {([['Red', redBoard, '#ff6a3d'], ['Blue', blueBoard, '#1b998b']] as [string, typeof redBoard, string][]).map(([name, board, color]) => (
-              <div key={name} className="rounded-3xl border border-white/5 bg-white/5 p-6 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 hover:border-white/10">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-display text-2xl uppercase tracking-widest drop-shadow-md" style={{ color }}>{name} Team</h2>
-                  <span className="text-sm font-bold bg-black/30 px-3 py-1 rounded-full text-white/80">{board.clearedTiles.length}/9 · Reset ×{board.resets}</span>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(snapshot?.teamBoards || {}).map(([teamName, board]) => {
+              const colorMap: Record<string, string> = {
+                red: '#ff6a3d', blue: '#1b998b', green: '#4ade80', yellow: '#facc15',
+                purple: '#c084fc', orange: '#fb923c', cyan: '#22d3ee', pink: '#f472b6'
+              };
+              const color = colorMap[teamName] || '#9ca3af';
+              const numQuestions = snapshot?.questionOrder?.length || 0;
+              const tiles = Array.from({ length: numQuestions }, (_, i) => i);
+              return (
+                <div key={teamName} className="rounded-3xl border border-white/5 bg-white/5 p-6 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 hover:border-white/10">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-display text-2xl uppercase tracking-widest drop-shadow-md" style={{ color }}>{teamName} Team</h2>
+                    <span className="text-sm font-bold bg-black/30 px-3 py-1 rounded-full text-white/80">{board.clearedTiles.length}/{numQuestions} · Reset ×{board.resets}</span>
+                  </div>
+                  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${Math.ceil(Math.sqrt(numQuestions))}, 1fr)` }}>
+                    {tiles.map((i) => {
+                      const cleared = board.clearedTiles.includes(i);
+                      return (
+                        <div key={i} className="aspect-square rounded-2xl flex items-center justify-center text-lg font-bold transition-all duration-500"
+                          style={{ background: cleared ? `${color}33` : 'rgba(0,0,0,0.2)', border: `1px solid ${cleared ? color : 'rgba(255,255,255,0.05)'}`, color: cleared ? color : 'var(--muted)', boxShadow: cleared ? `0 0 15px ${color}44` : undefined }}>
+                          {cleared ? '✓' : i + 1}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="grid grid-cols-3 gap-2">
-                  {TILES.map((i) => {
-                    const cleared = board.clearedTiles.includes(i);
-                    return (
-                      <div key={i} className="aspect-square rounded-2xl flex items-center justify-center text-lg font-bold transition-all duration-500"
-                        style={{ background: cleared ? `${color}33` : 'rgba(0,0,0,0.2)', border: `1px solid ${cleared ? color : 'rgba(255,255,255,0.05)'}`, color: cleared ? color : 'var(--muted)', boxShadow: cleared ? `0 0 15px ${color}44` : undefined }}>
-                        {cleared ? '✓' : i + 1}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="overflow-hidden rounded-3xl border">

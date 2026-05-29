@@ -23,7 +23,7 @@ export declare class RealtimeController {
         leaderboard: {
             id: string;
             nickname: string;
-            team: "red" | "blue" | null;
+            team: string | null;
             score: number;
             resetCount: number;
             streak: number;
@@ -34,7 +34,7 @@ export declare class RealtimeController {
     getLeaderboard(roomKey: string): Promise<{
         id: string;
         nickname: string;
-        team: "red" | "blue" | null;
+        team: string | null;
         score: number;
         resetCount: number;
         streak: number;
@@ -43,7 +43,7 @@ export declare class RealtimeController {
     getPlayers(roomKey: string, team?: 'red' | 'blue' | 'unassigned', connected?: string): Promise<{
         id: string;
         nickname: string;
-        team: "red" | "blue" | null;
+        team: string | null;
         score: number;
         resetCount: number;
         streak: number;

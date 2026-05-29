@@ -8,8 +8,9 @@
  *  - currentQuestionIndex
  *  - timerEndsAt (ms epoch)
  *  - timerHandle (NodeJS.Timeout ref so we can clear it)
- *  - teamBoards: { red: Set<tileIndex>, blue: Set<tileIndex> } – cleared tiles (0-8)
- *  - teamResets: { red: number, blue: number }
+ *  - globalTimerEndsAt (ms epoch)
+ *  - globalTimerHandle (NodeJS.Timeout ref)
+ *  - teamBoards: Record<string, TeamBoard> – cleared tiles (0 to N)
  *  - hostToken: string  – simple shared secret for admin ops
  *  - submitCooldown: Map<playerId, lastSubmitMs>  – anti-spam
  *  - questionOrder: number[]  – shuffled question order (index into quiz.questions)
@@ -33,23 +34,29 @@ export interface RoomState {
   questionOrder: number[]; // indices into quiz.questions[]
   timerEndsAt: number | null; // epoch ms
   timerHandle: ReturnType<typeof setTimeout> | null;
-  teamBoards: Record<'red' | 'blue', TeamBoard>;
+  globalTimerEndsAt: number | null;
+  globalTimerHandle: ReturnType<typeof setTimeout> | null;
+  teamBoards: Record<string, TeamBoard>;
   hostToken: string;
   /** playerId -> last submit epoch ms  */
   submitCooldown: Map<string, number>;
   startedAt: number | null;
-  winnerId: 'red' | 'blue' | 'tie' | null;
+  winnerId: string | 'tie' | null;
+  maxTeams: number;
 }
+
+export const TEAM_COLORS = ['red', 'blue', 'green', 'yellow', 'purple', 'orange', 'cyan', 'pink'];
 
 @Injectable()
 export class RoomStateService {
   private readonly rooms = new Map<string, RoomState>();
 
   /** Create or re-initialise a room's in-memory state. */
-  init(roomId: string, quizId: string, questionCount: number, hostToken: string, shuffle = false): RoomState {
+  init(roomId: string, quizId: string, questionCount: number, hostToken: string, shuffle = false, maxTeams = 2): RoomState {
     // Clear any existing timer
     const existing = this.rooms.get(roomId);
     if (existing?.timerHandle) clearTimeout(existing.timerHandle);
+    if (existing?.globalTimerHandle) clearTimeout(existing.globalTimerHandle);
 
     const order = Array.from({ length: questionCount }, (_, i) => i);
     if (shuffle) {
@@ -57,6 +64,11 @@ export class RoomStateService {
         const j = Math.floor(Math.random() * (i + 1));
         [order[i], order[j]] = [order[j], order[i]];
       }
+    }
+
+    const teamBoards: Record<string, TeamBoard> = {};
+    for (let i = 0; i < maxTeams && i < TEAM_COLORS.length; i++) {
+      teamBoards[TEAM_COLORS[i]] = { clearedTiles: new Set(), resets: 0 };
     }
 
     const state: RoomState = {
@@ -67,14 +79,14 @@ export class RoomStateService {
       questionOrder: order,
       timerEndsAt: null,
       timerHandle: null,
-      teamBoards: {
-        red: { clearedTiles: new Set(), resets: 0 },
-        blue: { clearedTiles: new Set(), resets: 0 },
-      },
+      globalTimerEndsAt: null,
+      globalTimerHandle: null,
+      teamBoards,
       hostToken,
       submitCooldown: new Map(),
       startedAt: null,
       winnerId: null,
+      maxTeams,
     };
 
     this.rooms.set(roomId, state);
@@ -92,6 +104,7 @@ export class RoomStateService {
   delete(roomId: string): void {
     const state = this.rooms.get(roomId);
     if (state?.timerHandle) clearTimeout(state.timerHandle);
+    if (state?.globalTimerHandle) clearTimeout(state.globalTimerHandle);
     this.rooms.delete(roomId);
   }
 
@@ -99,6 +112,11 @@ export class RoomStateService {
   setTimerHandle(roomId: string, handle: ReturnType<typeof setTimeout>): void {
     const state = this.rooms.get(roomId);
     if (state) state.timerHandle = handle;
+  }
+
+  setGlobalTimerHandle(roomId: string, handle: ReturnType<typeof setTimeout>): void {
+    const state = this.rooms.get(roomId);
+    if (state) state.globalTimerHandle = handle;
   }
 
   clearTimer(roomId: string): void {
@@ -109,30 +127,39 @@ export class RoomStateService {
     }
   }
 
+  clearGlobalTimer(roomId: string): void {
+    const state = this.rooms.get(roomId);
+    if (state?.globalTimerHandle) {
+      clearTimeout(state.globalTimerHandle);
+      state.globalTimerHandle = null;
+    }
+  }
+
   /** Returns a plain-object snapshot (safe for JSON emission). */
   snapshot(roomId: string): Record<string, unknown> | null {
     const s = this.rooms.get(roomId);
     if (!s) return null;
+    
+    const teamBoardsSnapshot: Record<string, unknown> = {};
+    for (const [team, board] of Object.entries(s.teamBoards)) {
+      teamBoardsSnapshot[team] = {
+        clearedTiles: Array.from(board.clearedTiles),
+        resets: board.resets,
+        tilesWonAt: board.tilesWonAt ?? null,
+      };
+    }
+
     return {
       roomId: s.roomId,
       phase: s.phase,
       currentQuestionIndex: s.currentQuestionIndex,
       questionOrder: s.questionOrder,
       timerEndsAt: s.timerEndsAt,
-      teamBoards: {
-        red: {
-          clearedTiles: Array.from(s.teamBoards.red.clearedTiles),
-          resets: s.teamBoards.red.resets,
-          tilesWonAt: s.teamBoards.red.tilesWonAt ?? null,
-        },
-        blue: {
-          clearedTiles: Array.from(s.teamBoards.blue.clearedTiles),
-          resets: s.teamBoards.blue.resets,
-          tilesWonAt: s.teamBoards.blue.tilesWonAt ?? null,
-        },
-      },
+      globalTimerEndsAt: s.globalTimerEndsAt,
+      teamBoards: teamBoardsSnapshot,
       startedAt: s.startedAt,
       winnerId: s.winnerId,
+      maxTeams: s.maxTeams,
     };
   }
 }

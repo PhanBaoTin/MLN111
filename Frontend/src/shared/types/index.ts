@@ -3,7 +3,7 @@
 export interface PlayerInfo {
   id: string;
   nickname: string;
-  team: 'red' | 'blue' | null;
+  team: string | null;
   score: number;
   streak: number;
   resetCount?: number;
@@ -36,10 +36,9 @@ export interface RoomSnapshot {
   currentQuestionIndex: number;
   questionOrder: number[];
   timerEndsAt: number | null;
-  teamBoards: {
-    red: TeamBoardState;
-    blue: TeamBoardState;
-  };
+  globalTimerEndsAt?: number | null;
+  teamBoards: Record<string, TeamBoardState>;
   startedAt: number | null;
-  winnerId: 'red' | 'blue' | 'tie' | null;
+  winnerId: string | 'tie' | null;
+  maxTeams?: number;
 }

@@ -15,7 +15,8 @@ const mongoose_2 = require("mongoose");
 let RoomSettings = class RoomSettings {
     shuffleQuestions;
     shuffleOptions;
-    maxPlayers;
+    maxTeams;
+    globalTimeLimit;
 };
 exports.RoomSettings = RoomSettings;
 __decorate([
@@ -27,9 +28,13 @@ __decorate([
     __metadata("design:type", Boolean)
 ], RoomSettings.prototype, "shuffleOptions", void 0);
 __decorate([
-    (0, mongoose_1.Prop)(),
+    (0, mongoose_1.Prop)({ default: 2 }),
     __metadata("design:type", Number)
-], RoomSettings.prototype, "maxPlayers", void 0);
+], RoomSettings.prototype, "maxTeams", void 0);
+__decorate([
+    (0, mongoose_1.Prop)({ default: 0 }),
+    __metadata("design:type", Number)
+], RoomSettings.prototype, "globalTimeLimit", void 0);
 exports.RoomSettings = RoomSettings = __decorate([
     (0, mongoose_1.Schema)({ _id: false })
 ], RoomSettings);

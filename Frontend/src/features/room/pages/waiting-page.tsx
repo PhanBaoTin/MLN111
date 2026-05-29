@@ -19,12 +19,24 @@ export function WaitingPage() {
   }, [snapshot?.phase, navigate]);
 
   const displayPlayers = leaderboard?.length ? leaderboard : (players ?? []);
-  const redPlayers = displayPlayers.filter((p) => p.team === 'red');
-  const bluePlayers = displayPlayers.filter((p) => p.team === 'blue');
   const unassigned = displayPlayers.filter((p) => !p.team);
 
-  const teamColor = (team: 'red' | 'blue' | null) =>
-    team === 'red' ? '#ff6a3d' : team === 'blue' ? '#1b998b' : 'var(--muted)';
+  // Group assigned players by team
+  const teamsMap = new Map<string, typeof displayPlayers>();
+  displayPlayers.forEach(p => {
+    if (p.team) {
+      if (!teamsMap.has(p.team)) teamsMap.set(p.team, []);
+      teamsMap.get(p.team)!.push(p);
+    }
+  });
+
+  const colorMap: Record<string, string> = {
+    red: '#ff6a3d', blue: '#1b998b', green: '#4ade80', yellow: '#facc15',
+    purple: '#c084fc', orange: '#fb923c', cyan: '#22d3ee', pink: '#f472b6'
+  };
+
+  const teamColor = (team: string | null) =>
+    team && colorMap[team] ? colorMap[team] : 'var(--muted)';
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto w-full pb-8">
@@ -48,15 +60,12 @@ export function WaitingPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 mt-8">
-        {([
-          { label: 'Red Team', team: 'red' as const, members: redPlayers },
-          { label: 'Blue Team', team: 'blue' as const, members: bluePlayers },
-        ]).map(({ label, team, members }) => (
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
+        {Array.from(teamsMap.entries()).map(([team, members]) => (
           <div key={team} className="rounded-3xl border border-white/5 bg-white/5 p-6 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 hover:border-white/10">
             <div className="flex items-center justify-between mb-6 group">
-              <h2 className="text-2xl font-display uppercase tracking-widest drop-shadow-md" style={{ color: teamColor(team) }}>
-                {team === 'red' ? <span className="inline-block group-hover:animate-wiggle">🔴</span> : <span className="inline-block group-hover:animate-wiggle">🔵</span>} {label}
+              <h2 className="text-2xl font-display uppercase tracking-widest drop-shadow-md capitalize" style={{ color: teamColor(team) }}>
+                {team} Team
               </h2>
               <span className="text-sm font-bold bg-black/30 px-3 py-1 rounded-full text-white/80">{members.length} players</span>
             </div>

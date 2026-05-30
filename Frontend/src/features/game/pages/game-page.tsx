@@ -223,8 +223,8 @@ export function GamePage() {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-2 min-h-0">
-          <div className="flex-1 min-h-0 flex flex-col rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 overflow-hidden">
+        <div className="flex flex-col gap-2 min-h-0 overflow-y-aut ">
+          <div className="flex-1 min-h-[260px] flex flex-col rounded-2xl border border-white/5 bg-white/5 p-3 backdrop-blur-md shadow-2xl transition-all hover:bg-white/10 overflow-hidden">
             <p className="text-[9px] uppercase tracking-[0.2em] text-[color:var(--muted)] font-bold flex-shrink-0">
               {phase === 'playing' ? 'Current question' : 'Waiting for host…'}
             </p>
